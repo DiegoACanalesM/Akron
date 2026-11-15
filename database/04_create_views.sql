@@ -30,10 +30,10 @@ WHERE s.status = 'COMPLETED'
 GROUP BY sd.product_id, sd.product_name;
 
 CREATE VIEW vw_sales_by_day AS
-SELECT (s.sale_date AT TIME ZONE 'UTC')::DATE AS sale_day,
+SELECT (s.sale_date AT TIME ZONE 'America/Bogota')::DATE AS sale_day,
        COUNT(DISTINCT s.id) AS sales_count,
        SUM(sd.subtotal)::NUMERIC(14, 2) AS sales_amount
 FROM sales s
 JOIN sale_details sd ON sd.sale_id = s.id
 WHERE s.status = 'COMPLETED'
-GROUP BY (s.sale_date AT TIME ZONE 'UTC')::DATE;
+GROUP BY (s.sale_date AT TIME ZONE 'America/Bogota')::DATE;
