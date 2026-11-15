@@ -59,6 +59,12 @@ Los documentos duplicados o las filas inválidas se rechazan sin detener toda la
 
 Ejecute `mvn clean verify` para compilar y ejecutar las pruebas automatizadas.
 
+## Base de datos PostgreSQL (en desarrollo)
+
+La rama `dev1-database` contiene el diseño lógico, el diccionario de datos, el diagrama entidad-relación y scripts iniciales para crear `akron_db` en PostgreSQL. Consulta `docs/database/DATABASE_DESIGN.md` y `database/README.md`.
+
+**Importante:** la aplicación Java de esta rama todavía utiliza SQLite. Los scripts PostgreSQL son el diseño y la preparación de la futura integración; no significan que los repositorios Java ya se hayan migrado. La integración se realizará después de revisar los contratos con el equipo y probar el esquema.
+
 ## Alcance
 
-Esta entrega incorpora una interfaz interactiva de consola y carga externa CSV de clientes. No es todavía una aplicación web ni una API REST. SQLite funciona como base local de un solo entorno; para varios usuarios remotos se requiere una base centralizada y una capa de servicio desplegada.
+Esta entrega incorpora una interfaz interactiva de consola y carga externa CSV de clientes. No es todavía una aplicación web ni una API REST. Cada instalación local conserva su propia información.
