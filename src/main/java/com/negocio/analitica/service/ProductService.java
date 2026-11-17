@@ -29,8 +29,7 @@ public class ProductService implements ProductOperations {
 
     public Product updateProduct(Product product) {
         validateProduct(product);
-        if (product.getId() == null ||
-                !productRepository.findById(product.getId()).isPresent()) {
+        if (product.getId() == null || productRepository.findById(product.getId()).isEmpty()) {
             throw new IllegalArgumentException("Product does not exist.");
         }
         product.setCategory(findExistingCategory(product.getCategory()));
@@ -39,17 +38,13 @@ public class ProductService implements ProductOperations {
 
     @Override
     public Product findProductById(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("Product ID cannot be null.");
-        }
+        if (id == null) throw new IllegalArgumentException("Product ID cannot be null.");
         return productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found."));
     }
 
     @Override
-    public List<Product> findAllProducts() {
-        return productRepository.findAll();
-    }
+    public List<Product> findAllProducts() { return productRepository.findAll(); }
 
     public void deleteProduct(Long id) {
         findProductById(id);
@@ -59,7 +54,7 @@ public class ProductService implements ProductOperations {
     @Override
     public boolean hasAvailability(Long productId, int quantity) {
         Product product = findProductById(productId);
-        return inventory.hasAvailability(product.getStock(), quantity);
+        return product.isActive() && inventory.hasAvailability(product.getStock(), quantity);
     }
 
     public Product registerStockEntry(Long productId, int quantity) {
@@ -80,6 +75,7 @@ public class ProductService implements ProductOperations {
 
     public List<Product> findLowStockProducts() {
         return productRepository.findAll().stream()
+                .filter(Product::isActive)
                 .filter(inventory::hasLowStock)
                 .toList();
     }
@@ -88,24 +84,25 @@ public class ProductService implements ProductOperations {
         if (category == null || category.getId() == null) {
             throw new IllegalArgumentException("A valid category is required.");
         }
-        return categoryRepository.findById(category.getId())
+        Category existing = categoryRepository.findById(category.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Category not found."));
+        if (!existing.isActive()) {
+            throw new IllegalArgumentException("Cannot assign a product to an inactive category.");
+        }
+        return existing;
     }
 
     private void validateProduct(Product product) {
-        if (product == null) {
-            throw new IllegalArgumentException("Product cannot be null.");
-        }
+        if (product == null) throw new IllegalArgumentException("Product cannot be null.");
         if (product.getName() == null || product.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Product name cannot be empty.");
         }
-        if (product.getPrice() <= 0 || Double.isNaN(product.getPrice())
+        // PostgreSQL products.price accepts zero (NUMERIC CHECK price >= 0).
+        if (product.getPrice() < 0 || Double.isNaN(product.getPrice())
                 || Double.isInfinite(product.getPrice())) {
-            throw new IllegalArgumentException("Price must be a positive finite value.");
+            throw new IllegalArgumentException("Price must be a non-negative finite value.");
         }
-        if (product.getStock() < 0) {
-            throw new IllegalArgumentException("Stock cannot be negative.");
-        }
+        if (product.getStock() < 0) throw new IllegalArgumentException("Stock cannot be negative.");
         if (product.getMinimumStock() < 0) {
             throw new IllegalArgumentException("Minimum stock cannot be negative.");
         }
