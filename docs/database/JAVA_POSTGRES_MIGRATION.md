@@ -32,7 +32,9 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 - `PostgresProductRepository`: create, update, find, list and delete products, including description, active state, category relation and numeric price.
 - `PostgresClienteRepository`: create, update, find by ID, find by document, list and delete customers. Blank/optional documents are stored as SQL `NULL`, and the database unique constraint remains the final duplicate guard.
 - `PostgresMetodoPagoRepository`: find a payment method by ID and list active methods from the PostgreSQL catalog.
-- All four adapters use the existing `ConnectionProvider` and PostgreSQL schema.
+- `PostgresVentaRepository`: persist a completed sale and its detail snapshots, conditionally decrement stock, and append one `SALE` inventory movement per detail in a single transaction. Any failure rolls back all of those changes.
+- `PostgresVentaService`: prepares sale snapshots using the authenticated operator, optional customer and active payment method; it does not change stock itself.
+- All repository adapters use the existing `ConnectionProvider` and PostgreSQL schema.
 - These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
 
 ## Current persistence status
@@ -48,14 +50,16 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 | PostgreSQL customer adapter | Implemented, awaiting coordinated cutover |
 | Payment methods in running app | Not yet connected |
 | PostgreSQL payment method adapter | Implemented, awaiting coordinated cutover |
+| PostgreSQL sale repository and transaction | Implemented, not yet wired or integration-tested |
+| PostgreSQL sale service | Implemented, not yet wired into the console flow |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
 | Analytics | Existing SQLite sales source (temporary) |
 
 ## Next migration steps
 
-1. Implement PostgreSQL sale persistence and a transaction boundary that includes sale details, conditional stock updates and inventory movements.
-2. Implement sale cancellation/reversal with the same atomicity guarantees.
+1. Implement sale cancellation/reversal with the same atomicity guarantees as sale creation.
+2. Implement PostgreSQL inventory entry, exit and adjustment transactions with append-only movement history.
 3. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together.
 4. Migrate analytics to PostgreSQL views and queries.
 5. Remove SQLite dependencies and adapters after the replacement is verified.
