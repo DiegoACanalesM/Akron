@@ -3,7 +3,7 @@ package com.negocio.analitica.repository.postgresql;
 import com.negocio.analitica.database.ConnectionProvider;
 import com.negocio.analitica.model.DetalleVenta;
 import com.negocio.analitica.model.Venta;
-import com.negocio.analitica.repository.VentaRepository;
+import com.negocio.analitica.repository.PostgresSaleOperations;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
@@ -18,7 +18,7 @@ import java.util.Optional;
  * PostgreSQL sale persistence. A completed sale, its details, stock deductions
  * and SALE inventory movements are committed as one database transaction.
  */
-public final class PostgresVentaRepository implements VentaRepository {
+public final class PostgresVentaRepository implements PostgresSaleOperations {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Bogota");
     private final ConnectionProvider connections;
 
@@ -135,6 +135,102 @@ public final class PostgresVentaRepository implements VentaRepository {
         } catch (SQLException exception) {
             throw new IllegalStateException("No fue posible registrar la venta en PostgreSQL.", exception);
         }
+    }
+
+
+    /**
+     * Cancels a completed sale and restores every affected product's stock.
+     * The sale status, stock restorations and reversal movements are atomic.
+     */
+    @Override
+    public Venta cancelCompletedSale(Long saleId, Long operatorId, String note) {
+        if (saleId == null || operatorId == null) {
+            throw new IllegalArgumentException("La venta y el usuario que cancela son obligatorios.");
+        }
+        String lockSale = "SELECT status FROM sales WHERE id = ? FOR UPDATE";
+        String lockDetails = """
+                SELECT id, product_id, quantity
+                FROM sale_details WHERE sale_id = ? ORDER BY id
+                FOR UPDATE
+                """;
+        String restoreStock = "UPDATE products SET stock = stock + ? WHERE id = ? RETURNING stock";
+        String insertReversal = """
+                INSERT INTO inventory_movements(
+                    product_id, user_id, sale_detail_id, movement_type,
+                    quantity, stock_before, stock_after, note
+                ) VALUES (?, ?, ?, 'SALE_REVERSAL', ?, ?, ?, ?)
+                """;
+        String updateStatus = "UPDATE sales SET status = 'CANCELLED' WHERE id = ?";
+        try (Connection connection = connections.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                ensureActiveOperator(connection, operatorId);
+                try (PreparedStatement statement = connection.prepareStatement(lockSale)) {
+                    statement.setLong(1, saleId);
+                    try (ResultSet result = statement.executeQuery()) {
+                        if (!result.next()) throw new IllegalArgumentException("Venta no encontrada.");
+                        if (!"COMPLETED".equals(result.getString("status"))) {
+                            throw new IllegalArgumentException("Solo se pueden cancelar ventas completadas.");
+                        }
+                    }
+                }
+
+                try (PreparedStatement details = connection.prepareStatement(lockDetails);
+                     PreparedStatement stock = connection.prepareStatement(restoreStock);
+                     PreparedStatement movement = connection.prepareStatement(insertReversal)) {
+                    details.setLong(1, saleId);
+                    try (ResultSet result = details.executeQuery()) {
+                        boolean foundDetail = false;
+                        while (result.next()) {
+                            foundDetail = true;
+                            long detailId = result.getLong("id");
+                            long productId = result.getLong("product_id");
+                            int quantity = result.getInt("quantity");
+                            int stockAfter;
+                            stock.setInt(1, quantity);
+                            stock.setLong(2, productId);
+                            try (ResultSet updated = stock.executeQuery()) {
+                                if (!updated.next()) throw new SQLException("Product referenced by sale detail was not found.");
+                                stockAfter = updated.getInt(1);
+                            }
+                            int stockBefore = stockAfter - quantity;
+                            movement.setLong(1, productId);
+                            movement.setLong(2, operatorId);
+                            movement.setLong(3, detailId);
+                            movement.setInt(4, quantity);
+                            movement.setInt(5, stockBefore);
+                            movement.setInt(6, stockAfter);
+                            movement.setString(7, note == null || note.isBlank()
+                                    ? "Reversal of sale #" + saleId : note.trim());
+                            movement.executeUpdate();
+                        }
+                        if (!foundDetail) throw new IllegalArgumentException("La venta no contiene detalles.");
+                    }
+                }
+
+                try (PreparedStatement statement = connection.prepareStatement(updateStatus)) {
+                    statement.setLong(1, saleId);
+                    statement.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
+                throw exception;
+            } finally {
+                try {
+                    connection.setAutoCommit(true);
+                } catch (SQLException ignored) {
+                    // Closing the connection below releases it even if reset fails.
+                }
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("No fue posible cancelar la venta en PostgreSQL.", exception);
+        }
+        return findById(saleId).orElseThrow(() -> new IllegalStateException("La venta cancelada no se encontró."));
     }
 
     @Override
