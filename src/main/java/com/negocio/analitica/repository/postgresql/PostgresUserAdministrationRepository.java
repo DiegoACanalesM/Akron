@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /** PostgreSQL user-administration operations with transactional role assignment. */
 public final class PostgresUserAdministrationRepository implements UserAdministrationRepository {
@@ -27,6 +29,29 @@ public final class PostgresUserAdministrationRepository implements UserAdministr
             return result.getBoolean(1);
         } catch (SQLException error) {
             throw new IllegalStateException("No se pudo verificar la configuración inicial de usuarios.", error);
+        }
+    }
+
+
+    @Override
+    public List<Usuario> findAllUsers() {
+        String sql = """
+                SELECT id, username, password_hash, full_name, is_active
+                FROM users
+                ORDER BY id
+                """;
+        List<Usuario> users = new ArrayList<>();
+        try (Connection connection = connections.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
+            while (result.next()) {
+                users.add(new Usuario(result.getLong("id"), result.getString("username"),
+                        result.getString("password_hash"), result.getString("full_name"),
+                        result.getBoolean("is_active")));
+            }
+            return List.copyOf(users);
+        } catch (SQLException error) {
+            throw new IllegalStateException("No se pudo consultar la lista de usuarios.", error);
         }
     }
 
