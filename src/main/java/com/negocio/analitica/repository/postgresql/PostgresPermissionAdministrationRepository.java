@@ -21,7 +21,14 @@ public final class PostgresPermissionAdministrationRepository
         validate(userId, permissionCode);
         String sql = """
                 INSERT INTO user_permissions (user_id, permission_id, granted)
-                SELECT ?, id, ? FROM permissions WHERE code = ?
+                SELECT ?, p.id, ?
+                FROM permissions p
+                WHERE p.code = ?
+                  AND EXISTS (
+                      SELECT 1 FROM user_roles ur
+                      JOIN roles r ON r.id = ur.role_id
+                      WHERE ur.user_id = ? AND r.name = 'EMPLOYEE'
+                  )
                 ON CONFLICT (user_id, permission_id)
                 DO UPDATE SET granted = EXCLUDED.granted
                 """;
@@ -30,6 +37,7 @@ public final class PostgresPermissionAdministrationRepository
             statement.setLong(1, userId);
             statement.setBoolean(2, granted);
             statement.setString(3, permissionCode.trim());
+            statement.setLong(4, userId);
             if (statement.executeUpdate() != 1) {
                 throw new IllegalArgumentException("El usuario o el permiso indicado no existe.");
             }
@@ -45,6 +53,11 @@ public final class PostgresPermissionAdministrationRepository
                 DELETE FROM user_permissions
                 WHERE user_id = ?
                   AND permission_id = (SELECT id FROM permissions WHERE code = ?)
+                  AND EXISTS (
+                      SELECT 1 FROM user_roles ur
+                      JOIN roles r ON r.id = ur.role_id
+                      WHERE ur.user_id = user_permissions.user_id AND r.name = 'EMPLOYEE'
+                  )
                 """;
         try (Connection connection = connections.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
