@@ -35,13 +35,18 @@ This branch contains the first domain and repository-contract adaptation plus th
 - Made customer document optional in `ClienteService`.
 - Extended `Category` and `Product` with active-state fields; Product also includes the database description field.
 - Aligned product price validation with PostgreSQL's non-negative constraint.
-- Added repository contracts for users, payment methods, and inventory movements.
+- Added repository contracts for users, permissions, payment methods, and inventory movements.
+- Added BCrypt password hashing (work factor 12) and PostgreSQL JDBC dependencies.
+- Added PostgreSQL connection configuration through AKRON_DB_URL, AKRON_DB_USER, and AKRON_DB_PASSWORD environment variables. No database password is stored in source code.
+- Added PostgreSQL user and effective-permission repositories. Individual user permission overrides take precedence over role permissions.
+- Added AuthenticationService and immutable AuthenticatedSession, including permission checks and clearing the supplied password char array after login attempts.
+- Added unit tests for successful login, invalid credentials, inactive users, unknown users, and session permissions.
 - Added `SingleInstanceGuard` and wired it into application startup to prevent two local AKRON processes from operating at once.
 
 ## Pending integration work
 
 1. Implement PostgreSQL connection configuration and repositories for all existing modules.
-2. Implement user login, password-hash verification, one active authenticated operator session, and permission checks. The local process lock alone does not authenticate employees.
+2. Connect the authentication flow to application startup and implement the first-owner bootstrap and owner-managed user creation/deactivation. The local process lock alone does not authenticate employees.
 3. Implement payment-method lookup.
 4. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
 5. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
