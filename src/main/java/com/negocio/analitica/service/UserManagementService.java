@@ -4,6 +4,7 @@ import com.negocio.analitica.model.Usuario;
 import com.negocio.analitica.repository.UserAdministrationRepository;
 import com.negocio.analitica.security.AuthenticatedSession;
 import com.negocio.analitica.security.PasswordHasher;
+import java.util.List;
 
 /** First-owner setup and owner-authorized employee administration. */
 public final class UserManagementService {
@@ -32,6 +33,11 @@ public final class UserManagementService {
         } finally {
             clear(password);
         }
+    }
+
+    public List<Usuario> listUsers(AuthenticatedSession actor) {
+        requireUserManagement(actor);
+        return users.findAllUsers();
     }
 
     /** Creates an employee account. Only a session with USERS_MANAGE may call this operation. */
