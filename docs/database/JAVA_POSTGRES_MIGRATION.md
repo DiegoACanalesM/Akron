@@ -59,6 +59,7 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 | PostgreSQL inventory repository/service | Entry, exit, adjustment and history implemented, not yet wired into the console flow |
 | Live PostgreSQL integration tests | Added; require a PostgreSQL schema and `AKRON_TEST_DB_*` environment variables |
 | CI PostgreSQL service | Added to Java CI; schema is created before integration tests |
+| Latest live integration verification | Passed: 36 tests total, including 5 PostgreSQL integration tests; 0 failures, 0 errors, 0 skipped |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
 | Analytics | Existing SQLite sales source (temporary) |
