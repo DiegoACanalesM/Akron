@@ -15,6 +15,24 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: akron_test
+          POSTGRES_PASSWORD: akron_test_password
+          POSTGRES_DB: akron_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U akron_test -d akron_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AKRON_TEST_DB_URL: jdbc:postgresql://localhost:5432/akron_db
+      AKRON_TEST_DB_USER: akron_test
+      AKRON_TEST_DB_PASSWORD: akron_test_password
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,5 +42,16 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Compile and run tests
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create PostgreSQL schema
+        env:
+          PGPASSWORD: akron_test_password
+        run: |
+          for script in database/02_create_tables.sql database/03_create_indexes.sql database/04_create_views.sql database/05_initial_data.sql; do
+            psql -h localhost -U akron_test -d akron_db -v ON_ERROR_STOP=1 -f "$script"
+          done
+      - name: Compile and run unit and PostgreSQL integration tests
         run: mvn --batch-mode --no-transfer-progress clean verify
