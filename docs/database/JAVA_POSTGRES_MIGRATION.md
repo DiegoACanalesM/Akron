@@ -1,75 +1,80 @@
-# Java modules adapted to the PostgreSQL model
+# Java modules adapted to PostgreSQL
 
 Branch: `dev1-postgresql-integration`
-Base: `dev1-database`
 
-AKRON is being migrated incrementally to PostgreSQL. The target is a fresh PostgreSQL database; existing SQLite business records do not need to be transferred.
+AKRON now uses a fresh local PostgreSQL database for authentication and all commercial modules. Existing SQLite business records are not migrated; the application starts with a new PostgreSQL schema.
 
-## Operating rule: one active operator
+## Operating model
 
-- Only one local AKRON process may be open for a business installation.
-- The employee using that process is the only active operator. To hand over the computer, close the current session/application before the next employee starts.
+- One local AKRON process may be open for a business installation.
+- The employee using that process is the only active operator. Close the application before another employee signs in.
 - This version does not support multiple computers sharing one business database.
-- `SingleInstanceGuard` obtains an operating-system file lock at `data/akron.lock`. A second local process is rejected while the first process holds the lock.
-- Authentication is backed by PostgreSQL. The process lock does not replace password verification or permission checks.
+- `SingleInstanceGuard` obtains an operating-system file lock at `data/akron.lock`.
+- Authentication and effective permissions are loaded from PostgreSQL.
 
-## Mapping decisions
+## Domain and persistence decisions
 
-- A sale may have no customer: `Venta.clienteId` is nullable.
-- A sale is associated with the system user who records it through `userId`.
-- A sale references `payment_methods` through `paymentMethodId`.
+- A sale may have no customer in the database model; the current console flow asks the operator to select one.
+- A sale is associated with the operator through `user_id` and with a payment method through `payment_method_id`.
 - Sale lifecycle uses `DRAFT`, `COMPLETED`, and `CANCELLED`.
 - Customer document is optional.
-- Product price accepts zero, matching PostgreSQL's `price >= 0` constraint.
-- Categories and products expose their `is_active` state.
+- Product price accepts zero.
+- Categories and products expose their active state. Sales and manual inventory movements reject inactive products or categories.
 - Inventory history is append-only through `InventoryMovement` and `InventoryMovementType`.
-- Sale totals must be read from `vw_sale_totals`.
-- Stock updates, sale details, and inventory movement rows must commit or roll back together in one PostgreSQL transaction.
+- Sale totals are derived from saved detail snapshots; PostgreSQL also provides `vw_sale_totals`.
+- Stock updates, sale details and inventory movement rows commit or roll back together in one PostgreSQL transaction.
+- Manual stock entries, exits and adjustments also update `products.stock` and append the movement in one transaction.
 
-## PostgreSQL repository work completed
+## PostgreSQL repositories and services
 
-- `PostgresCategoryRepository`: create, update, find, list and delete categories, including active state.
-- `PostgresProductRepository`: create, update, find, list and delete products, including description, active state, category relation and numeric price.
-- `PostgresClienteRepository`: create, update, find by ID, find by document, list and delete customers. Blank/optional documents are stored as SQL `NULL`, and the database unique constraint remains the final duplicate guard.
-- `PostgresMetodoPagoRepository`: find a payment method by ID and list active methods from the PostgreSQL catalog.
-- `PostgresVentaRepository`: persist a completed sale and its detail snapshots, conditionally decrement stock, and append one `SALE` inventory movement per detail in a single transaction. Any failure rolls back all of those changes.
-- `PostgresVentaService`: prepares sale snapshots using the authenticated operator, optional customer and active payment method; it does not change stock itself and delegates creation to the atomic repository transaction.
-- `PostgresSaleOperations` and `PostgresVentaRepository.cancelCompletedSale`: lock the completed sale, restore stock and append `SALE_REVERSAL` movements before marking it cancelled, all in one transaction.
-- `PostgresInventoryRepository`: register entries, exits and absolute stock adjustments, updating `products.stock` and appending the corresponding movement in one transaction. It also supports optimistic stock-before validation for supplied movement snapshots.
-- `PostgresInventoryService`: applies `INVENTORY_MANAGE` and `INVENTORY_VIEW` permission checks before inventory operations.
-- Sale and manual inventory updates now reject inactive products/categories; sale creation also rejects an inactive customer. These checks are enforced again inside the PostgreSQL transaction, not only by the service.
-- All repository adapters use the existing `ConnectionProvider` and PostgreSQL schema.
-- These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
+- `PostgresCategoryRepository`: category CRUD and active state.
+- `PostgresProductRepository`: product CRUD, category relation, description, price, stock and active state.
+- `PostgresClienteRepository`: customer CRUD and optional document lookup.
+- `PostgresMetodoPagoRepository`: active payment method catalog.
+- `PostgresVentaRepository`: sale persistence, detail snapshots, conditional stock deduction and `SALE` movement creation in one transaction.
+- `PostgresVentaRepository.cancelCompletedSale`: locks a completed sale, restores stock, appends `SALE_REVERSAL` movements and marks the sale cancelled in one transaction.
+- `PostgresInventoryRepository`: atomic stock entries, exits, absolute adjustments and movement history.
+- `PostgresVentaService`: validates the active customer/payment method, captures product and category snapshots, checks permissions and delegates stock changes to the atomic repository.
+- `PostgresInventoryService`: enforces `INVENTORY_MANAGE` and `INVENTORY_VIEW`.
+- `ProductService`: uses PostgreSQL inventory operations for stock changes. New products with opening stock are created at zero and then receive a recorded initial-stock movement. In PostgreSQL mode, a regular product update cannot silently change stock.
+- `Application`: wires all commercial modules to PostgreSQL; it no longer starts SQLite repositories.
+- `ConsoleMenu`: selects a payment method from the PostgreSQL catalog and exposes cancellation for completed sales.
 
 ## Current persistence status
 
-| Module | Database |
+| Module | Running application |
 |---|---|
 | Authentication and users | PostgreSQL |
 | Permissions | PostgreSQL |
-| Categories in running app | SQLite (temporary) |
-| Products in running app | SQLite (temporary) |
-| PostgreSQL category/product adapters | Implemented, awaiting coordinated cutover |
-| Customers in running app | SQLite (temporary) |
-| PostgreSQL customer adapter | Implemented, awaiting coordinated cutover |
-| Payment methods in running app | Not yet connected |
-| PostgreSQL payment method adapter | Implemented, awaiting coordinated cutover |
-| PostgreSQL sale repository and transaction | Implemented, not yet wired or integration-tested |
-| PostgreSQL sale service | Creation and cancellation implemented, not yet wired into the console flow |
-| PostgreSQL inventory repository/service | Entry, exit, adjustment and history implemented, not yet wired into the console flow |
-| Live PostgreSQL integration tests | Added; require a PostgreSQL schema and `AKRON_TEST_DB_*` environment variables |
-| CI PostgreSQL service | Added to Java CI; schema is created before integration tests |
-| Latest live integration verification | Passed: 36 tests total, including 5 PostgreSQL integration tests; 0 failures, 0 errors, 0 skipped |
-| Sales and sale details | SQLite (temporary) |
-| Inventory movements | Not yet migrated |
-| Analytics | Existing SQLite sales source (temporary) |
+| Categories | PostgreSQL |
+| Products | PostgreSQL |
+| Customers | PostgreSQL |
+| Payment methods | PostgreSQL |
+| Sales and sale details | PostgreSQL |
+| Inventory and movement history | PostgreSQL |
+| Analytics | PostgreSQL sales repository; calculations currently performed in the service layer |
+| SQLite adapters | Retained in source for legacy compatibility/tests; not wired by `Application` |
 
-## Next migration steps
+## Integration verification
 
-1. Review the first live PostgreSQL CI run and fix any integration issues it reveals.
-2. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together, including the console cancellation flow.
-3. Migrate analytics to PostgreSQL views and queries.
-4. Remove SQLite dependencies and adapters after the replacement is verified.
-5. Verify the schema and full application flow on a clean local database.
+Java CI starts a temporary PostgreSQL 16 service, applies `database/02_create_tables.sql` through `database/05_initial_data.sql`, and runs the live integration suite.
 
-The application is not yet fully migrated: the running commercial modules still depend on SQLite. Do not treat the mixed authentication/business persistence stage as production-ready.
+The initial PostgreSQL repository suite passed with 36 total tests, including 5 live PostgreSQL integration tests, 0 failures, 0 errors and 0 skipped. It covers:
+- Atomic sale creation and cancellation with stock restoration and movement history.
+- Rollback of a sale when stock is insufficient.
+- Inventory entry, exit and absolute adjustment.
+- Rejection of inactive customers for sales.
+- Customer persistence with an optional document.
+
+The current full-application wiring is also being verified by Java CI and Maven verification. A passing CI run does not replace a local end-to-end test on the user's PC.
+
+## Remaining work
+
+1. Verify the latest full-application wiring with Java CI and PostgreSQL integration tests.
+2. Test on a clean local PostgreSQL database, including first OWNER creation, employee permissions, product creation, opening stock, sales, cancellation, and inventory history.
+3. Move analytics calculations to PostgreSQL views/queries where that improves correctness and efficiency.
+4. Decide when to remove the legacy SQLite adapters and dependency after compatibility is confirmed.
+5. Add user-facing access to inventory adjustments/history if required by the final menu design.
+6. Prepare local backup and restore instructions before using real business data.
+
+Do not merge this branch into `main` until local end-to-end verification and review are complete.
