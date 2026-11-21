@@ -2,13 +2,10 @@ package com.negocio.analitica;
 
 import com.negocio.analitica.controller.*;
 import com.negocio.analitica.database.PostgresConnectionProvider;
-import com.negocio.analitica.repository.postgresql.PostgresCategoryRepository;
-import com.negocio.analitica.repository.postgresql.PostgresProductRepository;
+import com.negocio.analitica.model.*;
 import com.negocio.analitica.repository.postgresql.PostgresPermissionAdministrationRepository;
 import com.negocio.analitica.repository.postgresql.PostgresUserAdministrationRepository;
-import com.negocio.analitica.repository.sqlite.SqliteClienteRepository;
-import com.negocio.analitica.repository.sqlite.SqliteVentaRepository;
-import com.negocio.analitica.repository.sqlite.SqliteDatabase;
+import com.negocio.analitica.repository.sqlite.*;
 import com.negocio.analitica.security.AuthenticatedSession;
 import com.negocio.analitica.security.ConsoleAuthenticationFlow;
 import com.negocio.analitica.security.PasswordHasher;
@@ -34,7 +31,7 @@ public final class Application {
     }
 
     private static void runApplication(Scanner scanner) {
-        // Authentication, categories and products are stored in PostgreSQL.
+        // Authentication and user permissions are stored in PostgreSQL.
         PostgresConnectionProvider connections = PostgresConnectionProvider.fromEnvironment();
         Optional<AuthenticatedSession> authenticated =
                 ConsoleAuthenticationFlow.authenticate(scanner, connections);
@@ -43,12 +40,12 @@ public final class Application {
             return;
         }
 
-        // Customers and sales remain temporarily on SQLite until their transactional migration.
-        SqliteDatabase legacyDatabase = new SqliteDatabase("jdbc:sqlite:data/avnbr.db");
-        PostgresCategoryRepository categoryRepository = new PostgresCategoryRepository(connections);
-        PostgresProductRepository productRepository = new PostgresProductRepository(connections);
-        SqliteClienteRepository clienteRepository = new SqliteClienteRepository(legacyDatabase);
-        SqliteVentaRepository ventaRepository = new SqliteVentaRepository(legacyDatabase);
+        // Commercial modules stay on SQLite until sales and stock can move atomically to PostgreSQL.
+        SqliteDatabase database = new SqliteDatabase("jdbc:sqlite:data/avnbr.db");
+        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(database);
+        SqliteProductRepository productRepository = new SqliteProductRepository(database);
+        SqliteClienteRepository clienteRepository = new SqliteClienteRepository(database);
+        SqliteVentaRepository ventaRepository = new SqliteVentaRepository(database);
 
         CategoryService categoryService = new CategoryService(categoryRepository);
         ProductService productService = new ProductService(productRepository, categoryRepository);
@@ -68,8 +65,8 @@ public final class Application {
         PermissionManagementService permissionManagement = new PermissionManagementService(
                 new PostgresPermissionAdministrationRepository(connections));
 
-        System.out.println("Autenticación, categorías y productos: PostgreSQL.");
-        System.out.println("Clientes y ventas: SQLite (migración PostgreSQL pendiente).");
+        System.out.println("Autenticación y usuarios: PostgreSQL.");
+        System.out.println("Módulos comerciales: SQLite (migración PostgreSQL en curso).");
         CsvClienteImporter csvClienteImporter = new CsvClienteImporter(clientes);
         new ConsoleMenu(scanner, categories, products, clientes, ventas, analitica,
                 csvClienteImporter, authenticated.get(), userManagement, permissionManagement).iniciar();
