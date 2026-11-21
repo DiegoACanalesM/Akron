@@ -1,4 +1,4 @@
-# AVNBR — Análisis de Ventas para Negocios de Bajos Recursos
+# AVNBR — Análisis de Ventas para Negocios de Bajo Recursos
 
 Sistema Java 17 para pequeños negocios: categorías, productos, inventario, clientes, ventas e indicadores comerciales.
 
@@ -14,6 +14,8 @@ mvn exec:java -Dexec.mainClass="com.negocio.analitica.Application"
 ```
 
 La aplicación inicia un menú interactivo en consola. La base SQLite se crea automáticamente en `data/avnbr.db`; los registros se conservan al cerrar y volver a iniciar el programa. La carpeta `data/` está excluida de Git.
+
+**Uso exclusivo local:** solo se permite una instancia de AKRON abierta por instalación. Si ya hay una instancia en ejecución, otra apertura se rechaza. Para cambiar de empleado, se debe cerrar la aplicación actual antes de que ingrese el siguiente. Este bloqueo evita dos procesos locales, pero no reemplaza el futuro inicio de sesión individual.
 
 ## Funciones disponibles en el menú
 
@@ -63,8 +65,8 @@ Ejecute `mvn clean verify` para compilar y ejecutar las pruebas automatizadas.
 
 La rama `dev1-database` contiene el diseño lógico, el diccionario de datos, el diagrama entidad-relación y scripts iniciales para crear `akron_db` en PostgreSQL. Consulta `docs/database/DATABASE_DESIGN.md` y `database/README.md`.
 
-**Importante:** la aplicación Java de esta rama todavía utiliza SQLite. Los scripts PostgreSQL son el diseño y la preparación de la futura integración; no significan que los repositorios Java ya se hayan migrado. La integración se realizará después de revisar los contratos con el equipo y probar el esquema.
+**Importante:** la aplicación Java de esta rama todavía utiliza SQLite. Los scripts PostgreSQL son el diseño y la preparación de la futura integración; no significan que los repositorios Java ya se hayan migrado.
 
 ## Alcance
 
-Esta entrega incorpora una interfaz interactiva de consola y carga externa CSV de clientes. No es todavía una aplicación web ni una API REST. Cada instalación local conserva su propia información.
+Esta entrega incorpora una interfaz interactiva de consola y carga externa CSV de clientes. No es todavía una aplicación web ni una API REST. Cada instalación local conserva su propia información y admite un solo operador activo a la vez.
