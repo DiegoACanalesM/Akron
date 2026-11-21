@@ -6,7 +6,7 @@ import com.negocio.analitica.model.MetodoPago;
 import com.negocio.analitica.model.Product;
 import com.negocio.analitica.model.Venta;
 import com.negocio.analitica.repository.MetodoPagoRepository;
-import com.negocio.analitica.repository.VentaRepository;
+import com.negocio.analitica.repository.PostgresSaleOperations;
 import com.negocio.analitica.security.AuthenticatedSession;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,11 +20,11 @@ public final class PostgresVentaService extends VentaService {
     private final ClienteLookup customers;
     private final ProductOperations products;
     private final MetodoPagoRepository paymentMethods;
-    private final VentaRepository sales;
+    private final PostgresSaleOperations sales;
     private final AuthenticatedSession session;
 
     public PostgresVentaService(ClienteLookup customers, ProductOperations products,
-                                MetodoPagoRepository paymentMethods, VentaRepository sales,
+                                MetodoPagoRepository paymentMethods, PostgresSaleOperations sales,
                                 AuthenticatedSession session) {
         super(customers, products, sales);
         if (paymentMethods == null || session == null) {
@@ -81,5 +81,10 @@ public final class PostgresVentaService extends VentaService {
         Venta completedSale = new Venta(null, request.getFecha(), customerId,
                 session.getUserId(), paymentMethod.getId(), "COMPLETED", snapshots);
         return sales.save(completedSale);
+    }
+
+    /** Cancels a completed sale and reverses its stock movements atomically. */
+    public Venta cancelar(Long saleId, String note) {
+        return sales.cancelCompletedSale(saleId, session.getUserId(), note);
     }
 }
