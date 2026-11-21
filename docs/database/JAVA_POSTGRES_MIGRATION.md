@@ -11,7 +11,7 @@ This branch contains the first domain and repository-contract adaptation plus th
 - The employee using that process is the only active operator. To hand over the computer, close the current session/application before the next employee starts.
 - This version does not support multiple computers sharing one business database.
 - `SingleInstanceGuard` obtains an operating-system file lock at `data/akron.lock`. A second local process is rejected while the first process holds the lock. The OS releases the lock when the process exits or closes its channel.
-- This process lock is not user authentication. Individual login, password-hash verification, role checks, and session identity remain required integration work.
+- Authentication is now backed by PostgreSQL. The process lock remains separate from login and does not replace password verification or permission checks.
 
 ## Mapping decisions
 
@@ -44,18 +44,22 @@ This branch contains the first domain and repository-contract adaptation plus th
 - Added owner-authorized employee creation and account activation/deactivation.
 - Added transactional protection for first-owner creation and for the rule that prevents deactivating the last active OWNER.
 - Added owner-controlled per-user permission grants, denials, and reset-to-role-default behavior.
+- Added a console first-run setup that creates the initial OWNER only when the users table is empty, followed by username/password login.
+- Wired PostgreSQL authentication into application startup and added a five-attempt login limit.
+- Added a console user-administration menu to list users, create employees, activate/deactivate accounts, and grant, deny, or reset individual permissions.
+- Added session permission checks before protected console menu actions.
+- Added a GitHub Actions Java CI trigger for this integration branch.
 - Added unit tests for login, invalid credentials, inactive users, unknown users, session permissions, owner bootstrap, employee-management authorization, and permission administration.
 - Added `SingleInstanceGuard` and wired it into application startup to prevent two local AKRON processes from operating at once.
 
 ## Pending integration work
 
 1. Complete PostgreSQL repository implementations for the remaining business modules; the connection provider and user/permission repositories are now present.
-2. Connect the authentication flow, first-owner setup, and user-management services to application startup; add a secure login/logout screen or console prompt.
-3. Add a user-management interface for listing employees and assigning their individual permissions.
+2. Migrate the commercial repositories and services from SQLite to PostgreSQL, including sales and inventory transactions.
 4. Implement payment-method lookup.
 5. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
 6. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
 7. Update the console flow and analytics queries to use the PostgreSQL schema and views.
 8. Add unit and PostgreSQL integration tests, including the single-instance lock, and remove SQLite migration scaffolding only after the replacement is verified.
 
-The old SQLite adapter and deprecated fields/constructor in `Venta` are temporary compatibility scaffolding. This branch is **not yet a completed PostgreSQL integration**; the current application still uses SQLite.
+The old SQLite adapter and deprecated fields/constructor in `Venta` are temporary compatibility scaffolding. This branch is **not yet a completed PostgreSQL integration**: authentication and user administration use PostgreSQL, but categories, products, customers, sales, inventory, and analytics still use SQLite. The application requires the PostgreSQL schema and the three connection environment variables documented in the README.
