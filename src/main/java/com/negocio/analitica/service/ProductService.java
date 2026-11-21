@@ -11,26 +11,43 @@ public class ProductService implements ProductOperations {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final Inventory inventory = new Inventory();
+    private final PostgresInventoryService postgresInventory;
 
     public ProductService(ProductRepository productRepository,
                           CategoryRepository categoryRepository) {
+        this(productRepository, categoryRepository, null);
+    }
+
+    public ProductService(ProductRepository productRepository,
+                          CategoryRepository categoryRepository,
+                          PostgresInventoryService postgresInventory) {
         if (productRepository == null || categoryRepository == null) {
             throw new IllegalArgumentException("Repositories cannot be null.");
         }
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.postgresInventory = postgresInventory;
     }
 
     public Product createProduct(Product product) {
         validateProduct(product);
         product.setCategory(findExistingCategory(product.getCategory()));
+        if (postgresInventory != null && product.getStock() > 0) {
+            int initialStock = product.getStock();
+            product.setStock(0);
+            Product saved = productRepository.save(product);
+            postgresInventory.registerEntry(saved.getId(), initialStock, "Initial stock");
+            return findProductById(saved.getId());
+        }
         return productRepository.save(product);
     }
 
     public Product updateProduct(Product product) {
         validateProduct(product);
-        if (product.getId() == null || productRepository.findById(product.getId()).isEmpty()) {
-            throw new IllegalArgumentException("Product does not exist.");
+        Product existing = product.getId() == null ? null : productRepository.findById(product.getId()).orElse(null);
+        if (existing == null) throw new IllegalArgumentException("Product does not exist.");
+        if (postgresInventory != null && product.getStock() != existing.getStock()) {
+            throw new IllegalArgumentException("Use an inventory movement to change product stock.");
         }
         product.setCategory(findExistingCategory(product.getCategory()));
         return productRepository.save(product);
@@ -58,12 +75,20 @@ public class ProductService implements ProductOperations {
     }
 
     public Product registerStockEntry(Long productId, int quantity) {
+        if (postgresInventory != null) {
+            postgresInventory.registerEntry(productId, quantity, "Manual stock entry");
+            return findProductById(productId);
+        }
         Product product = findProductById(productId);
         inventory.registerEntry(product, quantity);
         return productRepository.save(product);
     }
 
     public Product registerStockExit(Long productId, int quantity) {
+        if (postgresInventory != null) {
+            postgresInventory.registerExit(productId, quantity, "Manual stock exit");
+            return findProductById(productId);
+        }
         Product product = findProductById(productId);
         inventory.registerExit(product, quantity);
         return productRepository.save(product);
