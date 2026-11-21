@@ -85,14 +85,18 @@ public final class ConsoleMenu {
 
     private void administrarUsuarios() {
         System.out.println("\n--- ADMINISTRACIÓN DE USUARIOS ---");
-        System.out.println("1. Crear empleado");
-        System.out.println("2. Activar/desactivar cuenta");
-        System.out.println("3. Conceder o denegar permiso individual");
-        System.out.println("4. Restaurar permiso predeterminado del rol");
+        System.out.println("1. Listar usuarios");
+        System.out.println("2. Crear empleado");
+        System.out.println("3. Activar/desactivar cuenta");
+        System.out.println("4. Conceder o denegar permiso individual");
+        System.out.println("5. Restaurar permiso predeterminado del rol");
         System.out.println("0. Volver");
         int option = leerEntero("Seleccione: ");
         switch (option) {
-            case 1 -> {
+            case 1 -> userManagement.listUsers(session).forEach(user ->
+                    System.out.printf("%d | %s | %s | %s%n", user.getId(), user.getUsername(),
+                            user.getFullName(), user.isActive() ? "ACTIVO" : "INACTIVO"));
+            case 2 -> {
                 String username = leerTexto("Nombre de usuario: ");
                 String fullName = leerTexto("Nombre completo: ");
                 char[] password = ConsoleAuthenticationFlow.readPassword(
@@ -100,16 +104,16 @@ public final class ConsoleMenu {
                 userManagement.createEmployee(session, username, fullName, password);
                 System.out.println("Empleado creado correctamente.");
             }
-            case 2 -> {
+            case 3 -> {
                 long userId = leerLong("ID del usuario: ");
                 boolean active = leerTexto("¿Activar la cuenta? (s/n): ").equalsIgnoreCase("s");
                 userManagement.setUserActive(session, userId, active);
                 System.out.println("Estado de la cuenta actualizado.");
             }
-            case 3, 4 -> {
+            case 4, 5 -> {
                 long userId = leerLong("ID del empleado: ");
                 String permission = leerTexto("Código del permiso (ej. SALES_CREATE): ").toUpperCase();
-                if (option == 3) {
+                if (option == 4) {
                     boolean granted = leerTexto("¿Conceder permiso? (s/n; n = denegar): ").equalsIgnoreCase("s");
                     permissionManagement.grantOrDeny(session, userId, permission, granted);
                     System.out.println("Permiso actualizado.");
