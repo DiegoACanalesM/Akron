@@ -37,6 +37,7 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 - `PostgresSaleOperations` and `PostgresVentaRepository.cancelCompletedSale`: lock the completed sale, restore stock and append `SALE_REVERSAL` movements before marking it cancelled, all in one transaction.
 - `PostgresInventoryRepository`: register entries, exits and absolute stock adjustments, updating `products.stock` and appending the corresponding movement in one transaction. It also supports optimistic stock-before validation for supplied movement snapshots.
 - `PostgresInventoryService`: applies `INVENTORY_MANAGE` and `INVENTORY_VIEW` permission checks before inventory operations.
+- Sale and manual inventory updates now reject inactive products/categories; sale creation also rejects an inactive customer. These checks are enforced again inside the PostgreSQL transaction, not only by the service.
 - All repository adapters use the existing `ConnectionProvider` and PostgreSQL schema.
 - These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
 
@@ -56,15 +57,18 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 | PostgreSQL sale repository and transaction | Implemented, not yet wired or integration-tested |
 | PostgreSQL sale service | Creation and cancellation implemented, not yet wired into the console flow |
 | PostgreSQL inventory repository/service | Entry, exit, adjustment and history implemented, not yet wired into the console flow |
+| Live PostgreSQL integration tests | Added; require a PostgreSQL schema and `AKRON_TEST_DB_*` environment variables |
+| CI PostgreSQL service | Added to Java CI; schema is created before integration tests |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
 | Analytics | Existing SQLite sales source (temporary) |
 
 ## Next migration steps
 
-1. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together, including the console cancellation flow.
-2. Migrate analytics to PostgreSQL views and queries.
-3. Remove SQLite dependencies and adapters after the replacement is verified.
-4. Add PostgreSQL integration tests and verify the schema on a clean local database.
+1. Review the first live PostgreSQL CI run and fix any integration issues it reveals.
+2. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together, including the console cancellation flow.
+3. Migrate analytics to PostgreSQL views and queries.
+4. Remove SQLite dependencies and adapters after the replacement is verified.
+5. Verify the schema and full application flow on a clean local database.
 
 The application is not yet fully migrated: the running commercial modules still depend on SQLite. Do not treat the mixed authentication/business persistence stage as production-ready.
