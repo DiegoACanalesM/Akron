@@ -1,8 +1,12 @@
-# AKRON - Diseño de base de datos (versión preliminar 1.0)
+# AKRON - Diseño de base de datos (versión preliminar 1.1)
 
 ## Alcance y despliegue
 
-Cada negocio tendrá una instalación local e independiente de AKRON y PostgreSQL en un computador. No se contempla sincronización entre negocios en esta versión. La aplicación Java se conectará mediante JDBC a localhost:5432, base akron_db.
+Cada negocio tendrá una instalación local e independiente de AKRON y PostgreSQL en un computador. No se contempla sincronización entre negocios ni acceso compartido desde varios computadores en esta versión. La aplicación Java se conectará mediante JDBC a localhost:5432, base akron_db.
+
+**Regla operativa: un solo operador activo por instalación.** Solo se permite una instancia de AKRON abierta en el computador del negocio. El empleado que tenga abierta esa instancia es el único que puede operar el sistema; para cambiar de empleado, se debe cerrar la sesión/instancia actual y permitir que el siguiente empleado acceda. No se admiten sesiones simultáneas ni operaciones concurrentes iniciadas desde varias instancias.
+
+La aplicación implementa un bloqueo local de instancia mediante un archivo de bloqueo del sistema operativo. Este mecanismo evita abrir dos procesos locales de AKRON al mismo tiempo; no sustituye la autenticación individual, que debe implementarse con usuarios y contraseñas. Tampoco es un mecanismo para coordinar varios computadores.
 
 Flujo obligatorio: UI -> Controller -> Service -> Repository -> PostgreSQL. Las credenciales deben estar fuera del código fuente.
 
@@ -33,6 +37,25 @@ products.stock representa las existencias actuales. Cada cambio debe actualizar 
 
 sales.customer_id admite NULL. Cada venta confirmada debe tener al menos un detalle. El detalle conserva el nombre del producto, categoría y precio al momento de la venta.
 
+## Reglas de operación e inventario
+
+1. Solo una instancia local de AKRON puede estar activa a la vez; por tanto, solo un empleado opera la instalación en un momento dado.
+2. Para cambiar de empleado, se cierra la sesión y se libera la instancia antes de que ingrese el siguiente.
+3. No se contempla que varios computadores se conecten a la misma base de datos en esta versión.
+4. Una venta no puede superar las existencias disponibles.
+5. Los tipos ENTRY, EXIT, SALE, SALE_REVERSAL y ADJUSTMENT deben quedar registrados en inventory_movements.
+6. Cada cambio de stock, su movimiento y la venta relacionada deben confirmarse o revertirse juntos en una única transacción JDBC.
+7. Aunque se limite el uso a un operador, PostgreSQL conserva las restricciones CHECK y la actualización condicionada de stock para evitar existencias negativas ante errores de aplicación o datos inesperados.
+
+Tipos:
+- ENTRY: entrada manual.
+- EXIT: salida manual.
+- SALE: descuento originado por una venta.
+- SALE_REVERSAL: devolución de stock al revertir una venta.
+- ADJUSTMENT: ajuste manual positivo o negativo.
+
+quantity siempre es positiva. stock_before y stock_after permiten auditar el resultado. Para ADJUSTMENT, la diferencia absoluta debe coincidir con quantity.
+
 ## Relaciones
 
 - categories 1:N products.
@@ -52,17 +75,6 @@ El diseño aplica 1FN, 2FN y 3FN:
 - 3FN: los datos descriptivos se almacenan en su entidad y se referencian con claves foráneas.
 
 Las columnas sale_details.product_name y category_name son instantáneas históricas intencionales; unit_price conserva el precio cobrado. No sustituyen la relación con products. El subtotal se calcula con una columna generada; el total de venta se calcula mediante una vista.
-
-## Reglas de inventario
-
-Tipos:
-- ENTRY: entrada manual.
-- EXIT: salida manual.
-- SALE: descuento originado por una venta.
-- SALE_REVERSAL: devolución de stock al revertir una venta.
-- ADJUSTMENT: ajuste manual positivo o negativo.
-
-quantity siempre es positiva. stock_before y stock_after permiten auditar el resultado. Para ADJUSTMENT, la diferencia absoluta debe coincidir con quantity. La aplicación debe impedir stock negativo bajo concurrencia y ejecutar el cambio de stock, el movimiento y la venta en una única transacción JDBC.
 
 ## Analítica
 
