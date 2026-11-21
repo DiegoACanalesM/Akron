@@ -24,8 +24,8 @@ public final class Application {
                      SingleInstanceGuard.acquire(Path.of("data", "akron.lock"));
              Scanner scanner = new Scanner(System.in)) {
             runApplication(scanner);
-        } catch (IllegalStateException error) {
-            System.err.println(error.getMessage());
+        } catch (RuntimeException error) {
+            System.err.println("No se pudo iniciar AKRON: " + error.getMessage());
             System.exit(1);
         }
     }
