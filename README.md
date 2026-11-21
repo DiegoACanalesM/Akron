@@ -1,41 +1,51 @@
 # AVNBR — Análisis de Ventas para Negocios de Bajo Recursos
 
-Sistema Java 17 para pequeños negocios: categorías, productos, inventario, clientes, ventas e indicadores comerciales.
+**AKRON** es un sistema Java 17 para pequeños negocios: categorías, productos, inventario, clientes, ventas e indicadores comerciales.
 
 ## Ejecución
 
-Requisitos: Java 17 y Maven 3.9 o superior.
+Requisitos: Java 17, Maven 3.9 o superior y PostgreSQL instalado localmente.
 
-Desde la raíz del repositorio:
+1. Prepara PostgreSQL y ejecuta los scripts en el orden indicado en [database/README.md](database/README.md).
+2. Configura las variables de entorno:
+   - `AKRON_DB_URL`: opcional; por defecto `jdbc:postgresql://localhost:5432/akron_db`.
+   - `AKRON_DB_USER`: usuario PostgreSQL con permisos sobre `akron_db`.
+   - `AKRON_DB_PASSWORD`: contraseña de ese usuario.
+3. Desde la raíz del repositorio, ejecuta:
 
 ```bash
 mvn clean verify
 mvn exec:java -Dexec.mainClass="com.negocio.analitica.Application"
 ```
 
-Antes de ejecutar AKRON, configura la conexión local a PostgreSQL mediante estas variables de entorno:
+En el primer inicio, AKRON solicita crear la cuenta inicial OWNER. En los siguientes inicios solicita usuario y contraseña; tras cinco intentos fallidos, se cierra.
 
-- `AKRON_DB_URL`: opcional; por defecto `jdbc:postgresql://localhost:5432/akron_db`.
-- `AKRON_DB_USER`: usuario PostgreSQL con permisos sobre `akron_db`.
-- `AKRON_DB_PASSWORD`: contraseña de ese usuario.
+## Persistencia
 
-La base y los scripts PostgreSQL deben estar preparados según `database/README.md`. En el primer inicio, AKRON solicita crear la cuenta inicial OWNER. En los siguientes inicios solicita usuario y contraseña; tras cinco intentos fallidos, se cierra.
+La rama `dev1-postgresql-integration` conecta autenticación, usuarios, permisos y todos los módulos comerciales a PostgreSQL. Categorías, productos, clientes, métodos de pago, ventas, detalles e inventario comparten la misma base local.
 
-La autenticación y los permisos ya se consultan en PostgreSQL. **Los módulos comerciales (categorías, productos, clientes y ventas) todavía utilizan SQLite** en esta rama y su migración a PostgreSQL está pendiente. No se deben confundir las dos persistencias.
+La creación y cancelación de ventas actualizan existencias y registran movimientos de inventario en transacciones atómicas. Las entradas, salidas y ajustes manuales también guardan el historial junto con la actualización del stock. Los cambios de existencias no deben hacerse directamente desde una edición de producto.
 
-**Uso exclusivo local:** solo se permite una instancia de AKRON abierta por instalación. Para cambiar de empleado, se debe cerrar la aplicación actual antes de que ingrese el siguiente.
+No se migran registros antiguos de SQLite: se utiliza una base PostgreSQL nueva. Los adaptadores SQLite siguen en el repositorio por compatibilidad y pruebas existentes, pero ya no se conectan desde `Application`.
 
-## Funciones disponibles en el menú
+## Uso exclusivo local
+
+Solo se permite una instancia de AKRON abierta por instalación. Para cambiar de empleado, se debe cerrar la aplicación actual antes de que ingrese el siguiente. Esta versión no permite que varios computadores compartan la misma base de datos.
+
+## Funciones disponibles
 
 1. Registrar categorías.
 2. Registrar productos asociados a categorías.
 3. Registrar clientes.
-4. Registrar ventas con uno o varios productos; se valida el stock y se descuenta al confirmar.
-5. Consultar categorías, productos, clientes y ventas almacenados.
+4. Registrar ventas con uno o varios productos y métodos de pago del catálogo.
+5. Consultar categorías, productos, clientes y ventas.
 6. Consultar ingresos, transacciones, unidades, ticket promedio, producto más vendido y alertas de stock bajo.
-7. Importar clientes desde un archivo CSV externo.
+7. Importar clientes desde un archivo CSV.
+8. Registrar entradas y salidas de inventario.
+9. Administrar usuarios y permisos.
+10. Cancelar ventas completadas, restaurando existencias y dejando trazabilidad.
 
-### Formato CSV de clientes
+## Formato CSV de clientes
 
 El archivo debe estar codificado en UTF-8, con encabezado y cuatro columnas en este orden:
 
@@ -45,35 +55,31 @@ Tienda Central,100200300,3001234567,Calle 10
 Minimercado La 12,100200301,3007654321,Carrera 12
 ```
 
-Los documentos duplicados o las filas inválidas se rechazan sin detener toda la importación. Para esta versión, los campos no deben contener comas internas. Al elegir la opción 7, ingrese la ruta local del archivo.
+Los documentos duplicados o las filas inválidas se rechazan sin detener toda la importación. Para esta versión, los campos no deben contener comas internas.
 
-## Arquitectura actual
+## Arquitectura
 
-- Autenticación y usuarios: `Consola → AuthenticationService / UserManagementService → PostgreSQL`.
-- Módulos comerciales pendientes de migración: `Consola → Controller → Service → Repository → SQLite`.
+`Consola → Controller → Service → Repository → PostgreSQL`
 
 - **Model:** entidades del dominio.
 - **Controller:** coordinación de operaciones.
 - **Service:** validaciones y reglas de negocio.
-- **Repository:** contratos de persistencia.
-- **SQLite/JDBC:** almacenamiento local persistente.
+- **Repository:** contratos y adaptadores de persistencia.
+- **PostgreSQL/JDBC:** almacenamiento local persistente.
 
 ## Tecnologías
 
 - Java 17
 - Maven
-- SQLite JDBC
+- PostgreSQL JDBC
+- SQLite JDBC (adaptadores heredados)
 - JUnit 5
 - GitHub Actions
 
 ## Verificación
 
-Ejecute `mvn clean verify` para compilar y ejecutar las pruebas automatizadas.
+Ejecuta `mvn clean verify` para compilar y ejecutar las pruebas automatizadas. Java CI crea una instancia PostgreSQL temporal, aplica el esquema y ejecuta pruebas de integración de ventas, cancelaciones e inventario.
 
-## PostgreSQL y autenticación
+## Alcance y estado
 
-Los scripts de `database/` crean el esquema `akron_db`, roles, permisos y métodos de pago. La aplicación utiliza PostgreSQL para autenticación, gestión de usuarios y permisos. Consulta `docs/database/JAVA_POSTGRES_MIGRATION.md` para conocer lo que ya está integrado y lo que sigue pendiente.
-
-## Alcance
-
-La aplicación sigue siendo una interfaz de consola; no es todavía una aplicación web ni una API REST. La rama es una etapa de migración: autenticación y usuarios usan PostgreSQL, mientras los datos comerciales siguen en SQLite. Cada instalación admite un solo operador activo a la vez.
+La aplicación sigue siendo una interfaz de consola; no es todavía una aplicación web ni una API REST. La integración PostgreSQL ya está conectada en la rama, pero antes de considerarla lista para uso real debe probarse también en el PC local y verificarse el flujo completo con una base nueva. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
