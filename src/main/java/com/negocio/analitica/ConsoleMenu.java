@@ -2,6 +2,7 @@ package com.negocio.analitica;
 
 import com.negocio.analitica.controller.*;
 import com.negocio.analitica.model.*;
+import com.negocio.analitica.repository.MetodoPagoRepository;
 import com.negocio.analitica.security.AuthenticatedSession;
 import com.negocio.analitica.security.ConsoleAuthenticationFlow;
 import com.negocio.analitica.service.UserManagementService;
@@ -26,12 +27,23 @@ public final class ConsoleMenu {
     private final AuthenticatedSession session;
     private final UserManagementService userManagement;
     private final PermissionManagementService permissionManagement;
+    private final MetodoPagoRepository paymentMethods;
 
     public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
                        ClienteController clientes, VentaController ventas, AnaliticaController analitica,
                        CsvClienteImporter csvClienteImporter, AuthenticatedSession session,
                        UserManagementService userManagement,
                        PermissionManagementService permissionManagement) {
+        this(scanner, categories, products, clientes, ventas, analitica, csvClienteImporter,
+                session, userManagement, permissionManagement, null);
+    }
+
+    public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
+                       ClienteController clientes, VentaController ventas, AnaliticaController analitica,
+                       CsvClienteImporter csvClienteImporter, AuthenticatedSession session,
+                       UserManagementService userManagement,
+                       PermissionManagementService permissionManagement,
+                       MetodoPagoRepository paymentMethods) {
         this.scanner = scanner;
         this.categories = categories;
         this.products = products;
@@ -42,6 +54,7 @@ public final class ConsoleMenu {
         this.session = java.util.Objects.requireNonNull(session);
         this.userManagement = java.util.Objects.requireNonNull(userManagement);
         this.permissionManagement = java.util.Objects.requireNonNull(permissionManagement);
+        this.paymentMethods = paymentMethods;
     }
 
     public void iniciar() {
@@ -60,6 +73,7 @@ public final class ConsoleMenu {
             System.out.println("9. Registrar salida de inventario");
             System.out.println("10. Consultar productos con stock bajo");
             System.out.println("11. Administrar usuarios y permisos");
+            if (paymentMethods != null) System.out.println("12. Cancelar una venta");
             System.out.println("0. Cerrar sesión y salir");
             try {
                 int opcion = leerEntero("Seleccione una opción: ");
@@ -74,6 +88,7 @@ public final class ConsoleMenu {
                     case 8, 9 -> { require("INVENTORY_MANAGE"); if (opcion == 8) registrarEntradaInventario(); else registrarSalidaInventario(); }
                     case 10 -> { require("INVENTORY_VIEW"); consultarStockBajo(); }
                     case 11 -> { require("USERS_MANAGE"); administrarUsuarios(); }
+                    case 12 -> { if (paymentMethods == null) throw new IllegalArgumentException("Opción no disponible."); require("SALES_CANCEL"); cancelarVenta(); }
                     case 0 -> { continuar = false; System.out.println("Sesión finalizada. Los datos permanecen guardados."); }
                     default -> System.out.println("Opción no válida.");
                 }
@@ -213,9 +228,39 @@ public final class ConsoleMenu {
             detalles.add(new DetalleVenta(null, productId, null, null, cantidad, 0));
             agregar = leerTexto("¿Agregar otro producto? (s/n): ").equalsIgnoreCase("s");
         }
-        String metodo = leerTexto("Método de pago: ");
-        Venta registrada = ventas.registrar(new Venta(null, null, clienteId, null, metodo, detalles));
+        Venta solicitud;
+        if (paymentMethods != null) {
+            List<MetodoPago> methods = paymentMethods.findAllActive();
+            if (methods.isEmpty()) {
+                System.out.println("No hay métodos de pago activos configurados.");
+                return;
+            }
+            System.out.println("\\nMétodos de pago:");
+            methods.forEach(method -> System.out.printf("%d - %s%n", method.getId(), method.getName()));
+            long paymentMethodId = leerLong("ID del método de pago: ");
+            solicitud = new Venta(null, null, clienteId, null, paymentMethodId, "DRAFT", detalles);
+        } else {
+            String methodName = leerTexto("Método de pago: ");
+            solicitud = new Venta(null, null, clienteId, null, methodName, detalles);
+        }
+        Venta registrada = ventas.registrar(solicitud);
         System.out.printf("Venta #%d registrada. Total: $%.2f%n", registrada.getId(), registrada.getTotal());
+    }
+
+    private void cancelarVenta() {
+        List<Venta> completed = ventas.listar().stream()
+                .filter(sale -> "COMPLETED".equals(sale.getStatus()))
+                .toList();
+        if (completed.isEmpty()) {
+            System.out.println("No hay ventas completadas para cancelar.");
+            return;
+        }
+        completed.forEach(sale -> System.out.printf("%d | %s | $%.2f%n",
+                sale.getId(), sale.getFecha(), sale.getTotal()));
+        long saleId = leerLong("ID de la venta que desea cancelar: ");
+        String note = leerTexto("Motivo de la cancelación: ");
+        Venta cancelled = ventas.cancelar(saleId, note);
+        System.out.println("Venta #" + cancelled.getId() + " cancelada y existencias restauradas.");
     }
 
     private void consultarDatos() {
