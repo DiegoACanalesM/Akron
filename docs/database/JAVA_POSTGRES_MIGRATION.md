@@ -40,13 +40,16 @@ This branch contains the first domain and repository-contract adaptation plus th
 - Added PostgreSQL connection configuration through AKRON_DB_URL, AKRON_DB_USER, and AKRON_DB_PASSWORD environment variables. No database password is stored in source code.
 - Added PostgreSQL user and effective-permission repositories. Individual user permission overrides take precedence over role permissions.
 - Added AuthenticationService and immutable AuthenticatedSession, including permission checks and clearing the supplied password char array after login attempts.
-- Added unit tests for successful login, invalid credentials, inactive users, unknown users, and session permissions.
+- Added a first-run OWNER bootstrap that refuses to create the initial owner when an account already exists.
+- Added owner-authorized employee creation and account activation/deactivation.
+- Added transactional protection for first-owner creation and for the rule that prevents deactivating the last active OWNER.
+- Added unit tests for login, invalid credentials, inactive users, unknown users, session permissions, owner bootstrap, and employee-management authorization.
 - Added `SingleInstanceGuard` and wired it into application startup to prevent two local AKRON processes from operating at once.
 
 ## Pending integration work
 
 1. Implement PostgreSQL connection configuration and repositories for all existing modules.
-2. Connect the authentication flow to application startup and implement the first-owner bootstrap and owner-managed user creation/deactivation. The local process lock alone does not authenticate employees.
+2. Connect the authentication flow and first-owner setup to application startup and add a secure login/logout screen or console prompt.
 3. Implement payment-method lookup.
 4. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
 5. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
