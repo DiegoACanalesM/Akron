@@ -34,8 +34,9 @@ class ProductServiceTest {
         Category category = categories.save(new Category(null, "Food", ""));
         assertThrows(IllegalArgumentException.class, () -> service.createProduct(
                 new Product(null, " ", 3.5, 1, 0, category)));
-        assertThrows(IllegalArgumentException.class, () -> service.createProduct(
-                new Product(null, "Rice", 0, 1, 0, category)));
+        Product zeroPriceProduct = service.createProduct(
+                new Product(null, "Rice", 0, 1, 0, category));
+        assertEquals(0.0, zeroPriceProduct.getPrice());
         assertThrows(IllegalArgumentException.class, () -> service.createProduct(
                 new Product(null, "Rice", Double.NaN, 1, 0, category)));
         assertThrows(IllegalArgumentException.class, () -> service.createProduct(
