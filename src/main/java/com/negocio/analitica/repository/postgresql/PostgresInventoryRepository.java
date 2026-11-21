@@ -51,8 +51,8 @@ public final class PostgresInventoryRepository implements PostgresInventoryOpera
                 int stockAfter;
                 if (type == InventoryMovementType.ENTRY || type == InventoryMovementType.EXIT) {
                     String sql = type == InventoryMovementType.ENTRY
-                            ? "UPDATE products SET stock = stock + ? WHERE id = ? RETURNING stock"
-                            : "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? RETURNING stock";
+                            ? "UPDATE products p SET stock = p.stock + ? FROM categories c WHERE p.category_id = c.id AND c.is_active = TRUE AND p.is_active = TRUE AND p.id = ? RETURNING p.stock"
+                            : "UPDATE products p SET stock = p.stock - ? FROM categories c WHERE p.category_id = c.id AND c.is_active = TRUE AND p.is_active = TRUE AND p.id = ? AND p.stock >= ? RETURNING p.stock";
                     try (PreparedStatement statement = connection.prepareStatement(sql)) {
                         statement.setInt(1, quantity);
                         statement.setLong(2, productId);
@@ -71,7 +71,7 @@ public final class PostgresInventoryRepository implements PostgresInventoryOpera
                             : Math.addExact(stockAfter, quantity);
                 } else {
                     try (PreparedStatement statement = connection.prepareStatement(
-                            "SELECT stock FROM products WHERE id = ? FOR UPDATE")) {
+                            "SELECT p.stock FROM products p JOIN categories c ON c.id = p.category_id WHERE p.id = ? AND p.is_active = TRUE AND c.is_active = TRUE FOR UPDATE OF p")) {
                         statement.setLong(1, productId);
                         try (ResultSet result = statement.executeQuery()) {
                             if (!result.next()) throw new IllegalArgumentException("Producto no encontrado.");
@@ -83,7 +83,7 @@ public final class PostgresInventoryRepository implements PostgresInventoryOpera
                         throw new IllegalArgumentException("El stock nuevo es igual al stock actual.");
                     }
                     try (PreparedStatement statement = connection.prepareStatement(
-                            "UPDATE products SET stock = ? WHERE id = ?")) {
+                            "UPDATE products p SET stock = ? FROM categories c WHERE p.category_id = c.id AND c.is_active = TRUE AND p.is_active = TRUE AND p.id = ?")) {
                         statement.setInt(1, stockAfter);
                         statement.setLong(2, productId);
                         statement.executeUpdate();
@@ -114,7 +114,7 @@ public final class PostgresInventoryRepository implements PostgresInventoryOpera
     @Override
     public InventoryMovement save(InventoryMovement movement) {
         validateMovement(movement);
-        String update = "UPDATE products SET stock = ? WHERE id = ? AND stock = ? RETURNING stock";
+        String update = "UPDATE products p SET stock = ? FROM categories c WHERE p.category_id = c.id AND c.is_active = TRUE AND p.is_active = TRUE AND p.id = ? AND p.stock = ? RETURNING p.stock";
         try (Connection connection = connections.getConnection()) {
             connection.setAutoCommit(false);
             try {
