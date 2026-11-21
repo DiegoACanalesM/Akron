@@ -73,8 +73,10 @@ public final class PostgresVentaService extends VentaService {
             if (!product.isActive()) {
                 throw new IllegalArgumentException("El producto está inactivo: " + product.getName());
             }
-            String categoryName = product.getCategory() == null
-                    ? "Sin categoría" : product.getCategory().getName();
+            if (product.getCategory() == null || !product.getCategory().isActive()) {
+                throw new IllegalArgumentException("La categoría del producto está inactiva o no existe.");
+            }
+            String categoryName = product.getCategory().getName();
             return new DetalleVenta(null, product.getId(), product.getName(), categoryName,
                     entry.getValue(), product.getPrice());
         }).toList();
