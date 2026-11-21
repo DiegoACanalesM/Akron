@@ -36,10 +36,12 @@ public final class PostgresVentaRepository implements PostgresSaleOperations {
                 RETURNING id, sale_date
                 """;
         String updateStock = """
-                UPDATE products
-                SET stock = stock - ?
-                WHERE id = ? AND is_active = TRUE AND stock >= ?
-                RETURNING stock
+                UPDATE products p
+                SET stock = p.stock - ?
+                FROM categories c
+                WHERE p.category_id = c.id AND c.is_active = TRUE
+                  AND p.id = ? AND p.is_active = TRUE AND p.stock >= ?
+                RETURNING p.stock
                 """;
         String insertDetail = """
                 INSERT INTO sale_details(sale_id, product_id, product_name, category_name, quantity, unit_price)
@@ -58,6 +60,7 @@ public final class PostgresVentaRepository implements PostgresSaleOperations {
             try {
                 ensureActiveOperator(connection, sale.getUserId());
                 ensureActivePaymentMethod(connection, sale.getPaymentMethodId());
+                if (sale.getClienteId() != null) ensureActiveCustomer(connection, sale.getClienteId());
 
                 try (PreparedStatement statement = connection.prepareStatement(insertSale)) {
                     if (sale.getClienteId() == null) statement.setNull(1, Types.BIGINT);
@@ -320,6 +323,16 @@ public final class PostgresVentaRepository implements PostgresSaleOperations {
             statement.setLong(1, userId);
             try (ResultSet result = statement.executeQuery()) {
                 if (!result.next()) throw new IllegalArgumentException("El usuario de la venta no está activo.");
+            }
+        }
+    }
+
+    private static void ensureActiveCustomer(Connection connection, Long customerId) throws SQLException {
+        String sql = "SELECT 1 FROM customers WHERE id = ? AND is_active = TRUE FOR SHARE";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, customerId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) throw new IllegalArgumentException("El cliente no existe o está inactivo.");
             }
         }
     }
