@@ -39,6 +39,7 @@ public final class PostgresVentaService extends VentaService {
 
     @Override
     public Venta registrar(Venta request) {
+        session.requirePermission("SALES_CREATE");
         if (request == null) throw new IllegalArgumentException("La venta es obligatoria.");
         if (request.getPaymentMethodId() == null) {
             throw new IllegalArgumentException("Debe seleccionar un método de pago.");
@@ -85,6 +86,7 @@ public final class PostgresVentaService extends VentaService {
 
     /** Cancels a completed sale and reverses its stock movements atomically. */
     public Venta cancelar(Long saleId, String note) {
+        session.requirePermission("SALES_CANCEL");
         return sales.cancelCompletedSale(saleId, session.getUserId(), note);
     }
 }
