@@ -30,7 +30,8 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 
 - `PostgresCategoryRepository`: create, update, find, list and delete categories, including active state.
 - `PostgresProductRepository`: create, update, find, list and delete products, including description, active state, category relation and numeric price.
-- Both adapters use the existing `ConnectionProvider` and PostgreSQL schema.
+- `PostgresClienteRepository`: create, update, find by ID, find by document, list and delete customers. Blank/optional documents are stored as SQL `NULL`, and the database unique constraint remains the final duplicate guard.
+- All three adapters use the existing `ConnectionProvider` and PostgreSQL schema.
 - These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
 
 ## Current persistence status
@@ -42,19 +43,19 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 | Categories in running app | SQLite (temporary) |
 | Products in running app | SQLite (temporary) |
 | PostgreSQL category/product adapters | Implemented, awaiting coordinated cutover |
-| Customers | SQLite (temporary) |
+| Customers in running app | SQLite (temporary) |
+| PostgreSQL customer adapter | Implemented, awaiting coordinated cutover |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
 | Analytics | Existing SQLite sales source (temporary) |
 
 ## Next migration steps
 
-1. Implement PostgreSQL customer repository.
-2. Implement payment-method lookup and PostgreSQL sale persistence.
-3. Implement sale creation/cancellation and stock movements in one transaction.
-4. Wire categories, products, customers, sales and inventory to PostgreSQL together.
-5. Migrate analytics to PostgreSQL views and queries.
-6. Remove SQLite dependencies and adapters after the replacement is verified.
-7. Add PostgreSQL integration tests and verify the schema on a clean local database.
+1. Implement payment-method lookup and PostgreSQL sale persistence.
+2. Implement sale creation/cancellation and stock movements in one transaction.
+3. Wire categories, products, customers, sales and inventory to PostgreSQL together.
+4. Migrate analytics to PostgreSQL views and queries.
+5. Remove SQLite dependencies and adapters after the replacement is verified.
+6. Add PostgreSQL integration tests and verify the schema on a clean local database.
 
 The application is not yet fully migrated: the running commercial modules still depend on SQLite. Do not treat the mixed authentication/business persistence stage as production-ready.
