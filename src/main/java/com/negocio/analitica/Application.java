@@ -2,10 +2,7 @@ package com.negocio.analitica;
 
 import com.negocio.analitica.controller.*;
 import com.negocio.analitica.database.PostgresConnectionProvider;
-import com.negocio.analitica.model.*;
-import com.negocio.analitica.repository.postgresql.PostgresPermissionAdministrationRepository;
-import com.negocio.analitica.repository.postgresql.PostgresUserAdministrationRepository;
-import com.negocio.analitica.repository.sqlite.*;
+import com.negocio.analitica.repository.postgresql.*;
 import com.negocio.analitica.security.AuthenticatedSession;
 import com.negocio.analitica.security.ConsoleAuthenticationFlow;
 import com.negocio.analitica.security.PasswordHasher;
@@ -31,7 +28,6 @@ public final class Application {
     }
 
     private static void runApplication(Scanner scanner) {
-        // Authentication and user permissions are stored in PostgreSQL.
         PostgresConnectionProvider connections = PostgresConnectionProvider.fromEnvironment();
         Optional<AuthenticatedSession> authenticated =
                 ConsoleAuthenticationFlow.authenticate(scanner, connections);
@@ -40,22 +36,28 @@ public final class Application {
             return;
         }
 
-        // Commercial modules stay on SQLite until sales and stock can move atomically to PostgreSQL.
-        SqliteDatabase database = new SqliteDatabase("jdbc:sqlite:data/avnbr.db");
-        SqliteCategoryRepository categoryRepository = new SqliteCategoryRepository(database);
-        SqliteProductRepository productRepository = new SqliteProductRepository(database);
-        SqliteClienteRepository clienteRepository = new SqliteClienteRepository(database);
-        SqliteVentaRepository ventaRepository = new SqliteVentaRepository(database);
+        AuthenticatedSession session = authenticated.get();
+
+        // All commercial modules now use the same local PostgreSQL database.
+        PostgresCategoryRepository categoryRepository = new PostgresCategoryRepository(connections);
+        PostgresProductRepository productRepository = new PostgresProductRepository(connections);
+        PostgresClienteRepository clienteRepository = new PostgresClienteRepository(connections);
+        PostgresMetodoPagoRepository paymentMethodRepository = new PostgresMetodoPagoRepository(connections);
+        PostgresVentaRepository ventaRepository = new PostgresVentaRepository(connections);
+        PostgresInventoryRepository inventoryRepository = new PostgresInventoryRepository(connections);
 
         CategoryService categoryService = new CategoryService(categoryRepository);
-        ProductService productService = new ProductService(productRepository, categoryRepository);
+        PostgresInventoryService inventoryService = new PostgresInventoryService(inventoryRepository, session);
+        ProductService productService = new ProductService(
+                productRepository, categoryRepository, inventoryService);
         ClienteService clienteService = new ClienteService(clienteRepository);
+        PostgresVentaService ventaService = new PostgresVentaService(
+                clienteService, productService, paymentMethodRepository, ventaRepository, session);
 
         CategoryController categories = new CategoryController(categoryService);
         ProductController products = new ProductController(productService);
         ClienteController clientes = new ClienteController(clienteService);
-        VentaController ventas = new VentaController(
-                new VentaService(clienteService, productService, ventaRepository));
+        VentaController ventas = new VentaController(ventaService);
         AnaliticaController analitica = new AnaliticaController(
                 new AnaliticaService(ventaRepository, productService));
 
@@ -65,10 +67,12 @@ public final class Application {
         PermissionManagementService permissionManagement = new PermissionManagementService(
                 new PostgresPermissionAdministrationRepository(connections));
 
-        System.out.println("Autenticación y usuarios: PostgreSQL.");
-        System.out.println("Módulos comerciales: SQLite (migración PostgreSQL en curso).");
+        System.out.println("Autenticación, usuarios y módulos comerciales: PostgreSQL.");
+        System.out.println("Ventas e inventario comparten transacciones en la misma base de datos.");
+
         CsvClienteImporter csvClienteImporter = new CsvClienteImporter(clientes);
         new ConsoleMenu(scanner, categories, products, clientes, ventas, analitica,
-                csvClienteImporter, authenticated.get(), userManagement, permissionManagement).iniciar();
+                csvClienteImporter, session, userManagement, permissionManagement,
+                paymentMethodRepository).iniciar();
     }
 }
