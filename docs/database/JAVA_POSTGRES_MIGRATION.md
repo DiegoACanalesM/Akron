@@ -3,7 +3,7 @@
 Branch: `dev1-postgresql-integration`
 Base: `dev1-database`
 
-This branch migrates AKRON incrementally to PostgreSQL. A fresh PostgreSQL database is the target; legacy SQLite business records are not being migrated.
+AKRON is being migrated incrementally to PostgreSQL. The target is a fresh PostgreSQL database; existing SQLite business records do not need to be transferred.
 
 ## Operating rule: one active operator
 
@@ -26,13 +26,12 @@ This branch migrates AKRON incrementally to PostgreSQL. A fresh PostgreSQL datab
 - Sale totals must be read from `vw_sale_totals`.
 - Stock updates, sale details, and inventory movement rows must commit or roll back together in one PostgreSQL transaction.
 
-## PostgreSQL migration implemented
+## PostgreSQL repository work completed
 
-- PostgreSQL authentication, user administration and permission management.
 - `PostgresCategoryRepository`: create, update, find, list and delete categories, including active state.
 - `PostgresProductRepository`: create, update, find, list and delete products, including description, active state, category relation and numeric price.
-- Application startup now wires categories and products to PostgreSQL.
-- Customer and sales repositories temporarily remain on SQLite because their migration must be coordinated with sale and inventory transactions.
+- Both adapters use the existing `ConnectionProvider` and PostgreSQL schema.
+- These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
 
 ## Current persistence status
 
@@ -40,8 +39,9 @@ This branch migrates AKRON incrementally to PostgreSQL. A fresh PostgreSQL datab
 |---|---|
 | Authentication and users | PostgreSQL |
 | Permissions | PostgreSQL |
-| Categories | PostgreSQL |
-| Products | PostgreSQL |
+| Categories in running app | SQLite (temporary) |
+| Products in running app | SQLite (temporary) |
+| PostgreSQL category/product adapters | Implemented, awaiting coordinated cutover |
 | Customers | SQLite (temporary) |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
@@ -52,8 +52,9 @@ This branch migrates AKRON incrementally to PostgreSQL. A fresh PostgreSQL datab
 1. Implement PostgreSQL customer repository.
 2. Implement payment-method lookup and PostgreSQL sale persistence.
 3. Implement sale creation/cancellation and stock movements in one transaction.
-4. Migrate analytics to PostgreSQL views and queries.
-5. Remove SQLite dependencies and adapters after the complete PostgreSQL flow is tested.
-6. Add PostgreSQL integration tests and verify the schema on a clean local database.
+4. Wire categories, products, customers, sales and inventory to PostgreSQL together.
+5. Migrate analytics to PostgreSQL views and queries.
+6. Remove SQLite dependencies and adapters after the replacement is verified.
+7. Add PostgreSQL integration tests and verify the schema on a clean local database.
 
-The application is not yet fully migrated: customers, sales, inventory and analytics still depend on the legacy SQLite layer. Do not treat the current mixed persistence stage as production-ready.
+The application is not yet fully migrated: the running commercial modules still depend on SQLite. Do not treat the mixed authentication/business persistence stage as production-ready.
