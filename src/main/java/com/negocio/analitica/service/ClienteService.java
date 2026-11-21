@@ -15,6 +15,7 @@ public class ClienteService implements ClienteLookup {
     public Cliente crear(Cliente cliente) {
         validar(cliente);
         normalizarDocumento(cliente);
+        validarDocumentoUnico(cliente);
         return repository.save(cliente);
     }
 
@@ -24,6 +25,7 @@ public class ClienteService implements ClienteLookup {
             throw new IllegalArgumentException("Cliente no encontrado.");
         }
         normalizarDocumento(cliente);
+        validarDocumentoUnico(cliente);
         return repository.save(cliente);
     }
 
@@ -48,6 +50,15 @@ public class ClienteService implements ClienteLookup {
         }
         // A customer document is optional in the PostgreSQL model.
         // If supplied, uniqueness is enforced by the repository/database.
+    }
+
+    private void validarDocumentoUnico(Cliente cliente) {
+        if (cliente.getDocumento() == null) return;
+        repository.findByDocumento(cliente.getDocumento()).ifPresent(existing -> {
+            if (cliente.getId() == null || !cliente.getId().equals(existing.getId())) {
+                throw new IllegalArgumentException("Ya existe un cliente con ese documento.");
+            }
+        });
     }
 
     private void normalizarDocumento(Cliente cliente) {
