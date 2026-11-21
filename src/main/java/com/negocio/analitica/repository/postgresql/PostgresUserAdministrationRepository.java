@@ -42,6 +42,22 @@ public final class PostgresUserAdministrationRepository implements UserAdministr
         try (Connection connection = connections.getConnection()) {
             connection.setAutoCommit(false);
             try {
+                if ("OWNER".equals(roleName)) {
+                    // Serialize first-owner creation and guarantee that only one bootstrap succeeds.
+                    try (PreparedStatement lock = connection.prepareStatement(
+                            "SELECT pg_advisory_xact_lock(73420119)")) {
+                        lock.execute();
+                    }
+                    try (PreparedStatement check = connection.prepareStatement(
+                            "SELECT EXISTS (SELECT 1 FROM users)");
+                         ResultSet result = check.executeQuery()) {
+                        result.next();
+                        if (result.getBoolean(1)) {
+                            throw new IllegalStateException("La cuenta inicial OWNER ya fue creada.");
+                        }
+                    }
+                }
+
                 long userId;
                 String insertUser = """
                         INSERT INTO users (username, password_hash, full_name, is_active)
@@ -89,6 +105,11 @@ public final class PostgresUserAdministrationRepository implements UserAdministr
         try (Connection connection = connections.getConnection()) {
             connection.setAutoCommit(false);
             try {
+                // Serialize owner deactivations so two concurrent requests cannot disable all owners.
+                try (PreparedStatement lock = connection.prepareStatement(
+                        "SELECT pg_advisory_xact_lock(73420120)")) {
+                    lock.execute();
+                }
                 boolean exists;
                 String lockUser = "SELECT id FROM users WHERE id = ? FOR UPDATE";
                 try (PreparedStatement statement = connection.prepareStatement(lockUser)) {
