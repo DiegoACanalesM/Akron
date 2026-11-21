@@ -2,6 +2,10 @@ package com.negocio.analitica;
 
 import com.negocio.analitica.controller.*;
 import com.negocio.analitica.model.*;
+import com.negocio.analitica.security.AuthenticatedSession;
+import com.negocio.analitica.security.ConsoleAuthenticationFlow;
+import com.negocio.analitica.service.UserManagementService;
+import com.negocio.analitica.service.PermissionManagementService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,10 +23,15 @@ public final class ConsoleMenu {
     private final VentaController ventas;
     private final AnaliticaController analitica;
     private final CsvClienteImporter csvClienteImporter;
+    private final AuthenticatedSession session;
+    private final UserManagementService userManagement;
+    private final PermissionManagementService permissionManagement;
 
     public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
                        ClienteController clientes, VentaController ventas, AnaliticaController analitica,
-                       CsvClienteImporter csvClienteImporter) {
+                       CsvClienteImporter csvClienteImporter, AuthenticatedSession session,
+                       UserManagementService userManagement,
+                       PermissionManagementService permissionManagement) {
         this.scanner = scanner;
         this.categories = categories;
         this.products = products;
@@ -30,12 +39,16 @@ public final class ConsoleMenu {
         this.ventas = ventas;
         this.analitica = analitica;
         this.csvClienteImporter = csvClienteImporter;
+        this.session = java.util.Objects.requireNonNull(session);
+        this.userManagement = java.util.Objects.requireNonNull(userManagement);
+        this.permissionManagement = java.util.Objects.requireNonNull(permissionManagement);
     }
 
     public void iniciar() {
         boolean continuar = true;
         while (continuar) {
-            System.out.println("\n========== AVNBR | MENÚ PRINCIPAL ==========");
+            System.out.println("\n========== AKRON | MENÚ PRINCIPAL ==========");
+            System.out.println("Usuario: " + session.getFullName());
             System.out.println("1. Registrar categoría");
             System.out.println("2. Registrar producto");
             System.out.println("3. Registrar cliente");
@@ -46,20 +59,21 @@ public final class ConsoleMenu {
             System.out.println("8. Registrar entrada de inventario");
             System.out.println("9. Registrar salida de inventario");
             System.out.println("10. Consultar productos con stock bajo");
-            System.out.println("0. Salir");
+            System.out.println("11. Administrar usuarios y permisos");
+            System.out.println("0. Cerrar sesión y salir");
             try {
                 int opcion = leerEntero("Seleccione una opción: ");
                 switch (opcion) {
-                    case 1 -> registrarCategoria();
-                    case 2 -> registrarProducto();
-                    case 3 -> registrarCliente();
-                    case 4 -> registrarVenta();
-                    case 5 -> consultarDatos();
-                    case 6 -> mostrarIndicadores();
-                    case 7 -> importarClientesCsv();
-                    case 8 -> registrarEntradaInventario();
-                    case 9 -> registrarSalidaInventario();
-                    case 10 -> consultarStockBajo();
+                    case 1 -> { require("CATEGORIES_MANAGE"); registrarCategoria(); }
+                    case 2 -> { require("PRODUCTS_MANAGE"); registrarProducto(); }
+                    case 3 -> { require("CUSTOMERS_MANAGE"); registrarCliente(); }
+                    case 4 -> { require("SALES_CREATE"); registrarVenta(); }
+                    case 5 -> { requireAll("CATEGORIES_VIEW", "PRODUCTS_VIEW", "CUSTOMERS_VIEW", "SALES_VIEW"); consultarDatos(); }
+                    case 6 -> { require("ANALYTICS_VIEW"); mostrarIndicadores(); }
+                    case 7 -> { require("CUSTOMERS_MANAGE"); importarClientesCsv(); }
+                    case 8, 9 -> { require("INVENTORY_MANAGE"); if (opcion == 8) registrarEntradaInventario(); else registrarSalidaInventario(); }
+                    case 10 -> { require("INVENTORY_VIEW"); consultarStockBajo(); }
+                    case 11 -> { require("USERS_MANAGE"); administrarUsuarios(); }
                     case 0 -> { continuar = false; System.out.println("Sesión finalizada. Los datos permanecen guardados."); }
                     default -> System.out.println("Opción no válida.");
                 }
@@ -67,6 +81,54 @@ public final class ConsoleMenu {
                 System.out.println("No fue posible completar la operación: " + ex.getMessage());
             }
         }
+    }
+
+    private void administrarUsuarios() {
+        System.out.println("\n--- ADMINISTRACIÓN DE USUARIOS ---");
+        System.out.println("1. Crear empleado");
+        System.out.println("2. Activar/desactivar cuenta");
+        System.out.println("3. Conceder o denegar permiso individual");
+        System.out.println("4. Restaurar permiso predeterminado del rol");
+        System.out.println("0. Volver");
+        int option = leerEntero("Seleccione: ");
+        switch (option) {
+            case 1 -> {
+                String username = leerTexto("Nombre de usuario: ");
+                String fullName = leerTexto("Nombre completo: ");
+                char[] password = ConsoleAuthenticationFlow.readPassword(
+                        scanner, "Contraseña (mínimo 10 caracteres): ");
+                userManagement.createEmployee(session, username, fullName, password);
+                System.out.println("Empleado creado correctamente.");
+            }
+            case 2 -> {
+                long userId = leerLong("ID del usuario: ");
+                boolean active = leerTexto("¿Activar la cuenta? (s/n): ").equalsIgnoreCase("s");
+                userManagement.setUserActive(session, userId, active);
+                System.out.println("Estado de la cuenta actualizado.");
+            }
+            case 3, 4 -> {
+                long userId = leerLong("ID del empleado: ");
+                String permission = leerTexto("Código del permiso (ej. SALES_CREATE): ").toUpperCase();
+                if (option == 3) {
+                    boolean granted = leerTexto("¿Conceder permiso? (s/n; n = denegar): ").equalsIgnoreCase("s");
+                    permissionManagement.grantOrDeny(session, userId, permission, granted);
+                    System.out.println("Permiso actualizado.");
+                } else {
+                    permissionManagement.restoreRoleDefault(session, userId, permission);
+                    System.out.println("Se restauró el permiso definido por el rol.");
+                }
+            }
+            case 0 -> { return; }
+            default -> System.out.println("Opción no válida.");
+        }
+    }
+
+    private void require(String permission) {
+        session.requirePermission(permission);
+    }
+
+    private void requireAll(String... permissions) {
+        for (String permission : permissions) session.requirePermission(permission);
     }
 
     private void registrarCategoria() {
