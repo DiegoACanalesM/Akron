@@ -3,63 +3,57 @@
 Branch: `dev1-postgresql-integration`
 Base: `dev1-database`
 
-This branch contains the first domain and repository-contract adaptation plus the local single-instance operating rule. It is not yet a completed PostgreSQL migration.
+This branch migrates AKRON incrementally to PostgreSQL. A fresh PostgreSQL database is the target; legacy SQLite business records are not being migrated.
 
 ## Operating rule: one active operator
 
 - Only one local AKRON process may be open for a business installation.
 - The employee using that process is the only active operator. To hand over the computer, close the current session/application before the next employee starts.
 - This version does not support multiple computers sharing one business database.
-- `SingleInstanceGuard` obtains an operating-system file lock at `data/akron.lock`. A second local process is rejected while the first process holds the lock. The OS releases the lock when the process exits or closes its channel.
-- Authentication is now backed by PostgreSQL. The process lock remains separate from login and does not replace password verification or permission checks.
+- `SingleInstanceGuard` obtains an operating-system file lock at `data/akron.lock`. A second local process is rejected while the first process holds the lock.
+- Authentication is backed by PostgreSQL. The process lock does not replace password verification or permission checks.
 
 ## Mapping decisions
 
 - A sale may have no customer: `Venta.clienteId` is nullable.
 - A sale is associated with the system user who records it through `userId`.
-- A sale references `payment_methods` through `paymentMethodId`; new code must not persist a free-text payment label.
+- A sale references `payment_methods` through `paymentMethodId`.
 - Sale lifecycle uses `DRAFT`, `COMPLETED`, and `CANCELLED`.
-- Customer document is optional. If provided, the database unique constraint protects uniqueness.
-- Product price accepts zero, matching the PostgreSQL CHECK constraint `price >= 0`.
-- Categories and products expose their `is_active` state. Inactive products cannot be sold, and new products cannot be assigned to inactive categories.
-- Inventory history is represented by `InventoryMovement` and `InventoryMovementType`; persistence is append-only through the repository contract.
-- Sale totals must be read from `vw_sale_totals`, not stored in `sales`.
-- Stock updates, sale details, and inventory movement rows must be committed or rolled back together in one database transaction. The single-operator rule simplifies the normal workflow but does not replace transaction boundaries or database constraints.
+- Customer document is optional.
+- Product price accepts zero, matching PostgreSQL's `price >= 0` constraint.
+- Categories and products expose their `is_active` state.
+- Inventory history is append-only through `InventoryMovement` and `InventoryMovementType`.
+- Sale totals must be read from `vw_sale_totals`.
+- Stock updates, sale details, and inventory movement rows must commit or roll back together in one PostgreSQL transaction.
 
-## Changes made in this branch
+## PostgreSQL migration implemented
 
-- Extended `Venta` with `userId`, `paymentMethodId`, and sale status.
-- Added `Usuario` and `MetodoPago` domain models.
-- Added `EstadoVenta` and `InventoryMovementType` enumerations.
-- Added `InventoryMovement` domain model.
-- Made customer document optional in `ClienteService`.
-- Extended `Category` and `Product` with active-state fields; Product also includes the database description field.
-- Aligned product price validation with PostgreSQL's non-negative constraint.
-- Added repository contracts for users, permissions, payment methods, and inventory movements.
-- Added BCrypt password hashing (work factor 12) and PostgreSQL JDBC dependencies.
-- Added PostgreSQL connection configuration through AKRON_DB_URL, AKRON_DB_USER, and AKRON_DB_PASSWORD environment variables. No database password is stored in source code.
-- Added PostgreSQL user and effective-permission repositories. Individual user permission overrides take precedence over role permissions.
-- Added AuthenticationService and immutable AuthenticatedSession, including permission checks and clearing the supplied password char array after login attempts.
-- Added a first-run OWNER bootstrap that refuses to create the initial owner when an account already exists.
-- Added owner-authorized employee creation and account activation/deactivation.
-- Added transactional protection for first-owner creation and for the rule that prevents deactivating the last active OWNER.
-- Added owner-controlled per-user permission grants, denials, and reset-to-role-default behavior.
-- Added a console first-run setup that creates the initial OWNER only when the users table is empty, followed by username/password login.
-- Wired PostgreSQL authentication into application startup and added a five-attempt login limit.
-- Added a console user-administration menu to list users, create employees, activate/deactivate accounts, and grant, deny, or reset individual permissions.
-- Added session permission checks before protected console menu actions.
-- Added a GitHub Actions Java CI trigger for this integration branch.
-- Added unit tests for login, invalid credentials, inactive users, unknown users, session permissions, owner bootstrap, employee-management authorization, and permission administration.
-- Added `SingleInstanceGuard` and wired it into application startup to prevent two local AKRON processes from operating at once.
+- PostgreSQL authentication, user administration and permission management.
+- `PostgresCategoryRepository`: create, update, find, list and delete categories, including active state.
+- `PostgresProductRepository`: create, update, find, list and delete products, including description, active state, category relation and numeric price.
+- Application startup now wires categories and products to PostgreSQL.
+- Customer and sales repositories temporarily remain on SQLite because their migration must be coordinated with sale and inventory transactions.
 
-## Pending integration work
+## Current persistence status
 
-1. Complete PostgreSQL repository implementations for the remaining business modules; the connection provider and user/permission repositories are now present.
-2. Migrate the commercial repositories and services from SQLite to PostgreSQL, including sales and inventory transactions.
-4. Implement payment-method lookup.
-5. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
-6. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
-7. Update the console flow and analytics queries to use the PostgreSQL schema and views.
-8. Add unit and PostgreSQL integration tests, including the single-instance lock, and remove SQLite migration scaffolding only after the replacement is verified.
+| Module | Database |
+|---|---|
+| Authentication and users | PostgreSQL |
+| Permissions | PostgreSQL |
+| Categories | PostgreSQL |
+| Products | PostgreSQL |
+| Customers | SQLite (temporary) |
+| Sales and sale details | SQLite (temporary) |
+| Inventory movements | Not yet migrated |
+| Analytics | Existing SQLite sales source (temporary) |
 
-The old SQLite adapter and deprecated fields/constructor in `Venta` are temporary compatibility scaffolding. This branch is **not yet a completed PostgreSQL integration**: authentication and user administration use PostgreSQL, but categories, products, customers, sales, inventory, and analytics still use SQLite. The application requires the PostgreSQL schema and the three connection environment variables documented in the README.
+## Next migration steps
+
+1. Implement PostgreSQL customer repository.
+2. Implement payment-method lookup and PostgreSQL sale persistence.
+3. Implement sale creation/cancellation and stock movements in one transaction.
+4. Migrate analytics to PostgreSQL views and queries.
+5. Remove SQLite dependencies and adapters after the complete PostgreSQL flow is tested.
+6. Add PostgreSQL integration tests and verify the schema on a clean local database.
+
+The application is not yet fully migrated: customers, sales, inventory and analytics still depend on the legacy SQLite layer. Do not treat the current mixed persistence stage as production-ready.
