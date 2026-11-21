@@ -43,17 +43,19 @@ This branch contains the first domain and repository-contract adaptation plus th
 - Added a first-run OWNER bootstrap that refuses to create the initial owner when an account already exists.
 - Added owner-authorized employee creation and account activation/deactivation.
 - Added transactional protection for first-owner creation and for the rule that prevents deactivating the last active OWNER.
-- Added unit tests for login, invalid credentials, inactive users, unknown users, session permissions, owner bootstrap, and employee-management authorization.
+- Added owner-controlled per-user permission grants, denials, and reset-to-role-default behavior.
+- Added unit tests for login, invalid credentials, inactive users, unknown users, session permissions, owner bootstrap, employee-management authorization, and permission administration.
 - Added `SingleInstanceGuard` and wired it into application startup to prevent two local AKRON processes from operating at once.
 
 ## Pending integration work
 
 1. Implement PostgreSQL connection configuration and repositories for all existing modules.
-2. Connect the authentication flow and first-owner setup to application startup and add a secure login/logout screen or console prompt.
-3. Implement payment-method lookup.
-4. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
-5. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
-6. Update the console flow and analytics queries to use the PostgreSQL schema and views.
-7. Add unit and PostgreSQL integration tests, including the single-instance lock, and remove SQLite migration scaffolding only after the replacement is verified.
+2. Connect the authentication flow, first-owner setup, and user-management services to application startup; add a secure login/logout screen or console prompt.
+3. Add a user-management interface for listing employees and assigning their individual permissions.
+4. Implement payment-method lookup.
+5. Update `VentaService` to accept an optional customer and require the authenticated user and a valid payment method.
+6. Move sale creation and stock movement into one PostgreSQL transaction; preserve database stock constraints.
+7. Update the console flow and analytics queries to use the PostgreSQL schema and views.
+8. Add unit and PostgreSQL integration tests, including the single-instance lock, and remove SQLite migration scaffolding only after the replacement is verified.
 
 The old SQLite adapter and deprecated fields/constructor in `Venta` are temporary compatibility scaffolding. This branch is **not yet a completed PostgreSQL integration**; the current application still uses SQLite.
