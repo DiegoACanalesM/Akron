@@ -49,7 +49,7 @@ This branch contains the first domain and repository-contract adaptation plus th
 
 ## Pending integration work
 
-1. Implement PostgreSQL connection configuration and repositories for all existing modules.
+1. Complete PostgreSQL repository implementations for the remaining business modules; the connection provider and user/permission repositories are now present.
 2. Connect the authentication flow, first-owner setup, and user-management services to application startup; add a secure login/logout screen or console prompt.
 3. Add a user-management interface for listing employees and assigning their individual permissions.
 4. Implement payment-method lookup.
