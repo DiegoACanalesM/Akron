@@ -19,6 +19,9 @@ class UserManagementServiceTest {
         Boolean changedActive;
 
         @Override public boolean hasAnyUser() { return hasUsers; }
+        @Override public java.util.List<Usuario> findAllUsers() {
+            return createdUser == null ? java.util.List.of() : java.util.List.of(createdUser);
+        }
         @Override public void createUserWithRole(Usuario user, String roleName) {
             createdUser = user;
             createdRole = roleName;
