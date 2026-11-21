@@ -267,7 +267,7 @@ public final class PostgresVentaRepository implements PostgresSaleOperations {
     private List<Venta> query(LocalDate from, LocalDate to) {
         boolean filtered = from != null;
         String sql = saleSelect()
-                + (filtered ? " WHERE (s.sale_date AT TIME ZONE 'America/Bogota')::date BETWEEN ? AND ?" : "")
+                + (filtered ? " WHERE s.status = 'COMPLETED' AND (s.sale_date AT TIME ZONE 'America/Bogota')::date BETWEEN ? AND ?" : " WHERE s.status = 'COMPLETED'")
                 + " ORDER BY s.sale_date, s.id";
         List<Venta> sales = new ArrayList<>();
         try (Connection connection = connections.getConnection();
@@ -306,14 +306,20 @@ public final class PostgresVentaRepository implements PostgresSaleOperations {
                 }
             }
         }
-        return new Venta(id, date, customerId, result.getLong("user_id"),
+        Venta sale = new Venta(id, date, customerId, result.getLong("user_id"),
                 result.getLong("payment_method_id"), result.getString("status"), details);
+        sale.setClienteNombre(result.getString("customer_name"));
+        sale.setMetodoPago(result.getString("payment_method_name"));
+        return sale;
     }
 
     private static String saleSelect() {
         return """
-                SELECT s.id, s.customer_id, s.user_id, s.payment_method_id, s.sale_date, s.status
+                SELECT s.id, s.customer_id, s.user_id, s.payment_method_id, s.sale_date, s.status,
+                       customers.name AS customer_name, payment_methods.name AS payment_method_name
                 FROM sales s
+                LEFT JOIN customers ON customers.id = s.customer_id
+                JOIN payment_methods ON payment_methods.id = s.payment_method_id
                 """;
     }
 
