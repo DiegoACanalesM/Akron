@@ -66,15 +66,14 @@ The initial PostgreSQL repository suite passed with 36 total tests, including 5 
 - Rejection of inactive customers for sales.
 - Customer persistence with an optional document.
 
-The current full-application wiring is also being verified by Java CI and Maven verification. A passing CI run does not replace a local end-to-end test on the user's PC.
+The full-application PostgreSQL wiring passed Java CI and Maven verification on commit `e2a759de09015d60bb2f3ed225791de789fb10f1` (run `44945616149`). A passing CI run does not replace a local end-to-end test on the user's PC.
 
 ## Remaining work
 
-1. Verify the latest full-application wiring with Java CI and PostgreSQL integration tests.
-2. Test on a clean local PostgreSQL database, including first OWNER creation, employee permissions, product creation, opening stock, sales, cancellation, and inventory history.
-3. Move analytics calculations to PostgreSQL views/queries where that improves correctness and efficiency.
-4. Decide when to remove the legacy SQLite adapters and dependency after compatibility is confirmed.
-5. Add user-facing access to inventory adjustments/history if required by the final menu design.
-6. Prepare local backup and restore instructions before using real business data.
+1. Test the complete application on a clean local PostgreSQL database, including first OWNER creation, employee permissions, product creation, opening stock, sales, cancellation and inventory history.
+2. Move analytics calculations to PostgreSQL views/queries where that improves correctness and efficiency.
+3. Decide when to remove the legacy SQLite adapters and dependency after compatibility is confirmed.
+4. Add user-facing access to inventory adjustments/history if required by the final menu design.
+5. Prepare local backup and restore instructions before using real business data.
 
 Do not merge this branch into `main` until local end-to-end verification and review are complete.
