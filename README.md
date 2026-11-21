@@ -13,9 +13,17 @@ mvn clean verify
 mvn exec:java -Dexec.mainClass="com.negocio.analitica.Application"
 ```
 
-La aplicación inicia un menú interactivo en consola. La base SQLite se crea automáticamente en `data/avnbr.db`; los registros se conservan al cerrar y volver a iniciar el programa. La carpeta `data/` está excluida de Git.
+Antes de ejecutar AKRON, configura la conexión local a PostgreSQL mediante estas variables de entorno:
 
-**Uso exclusivo local:** solo se permite una instancia de AKRON abierta por instalación. Si ya hay una instancia en ejecución, otra apertura se rechaza. Para cambiar de empleado, se debe cerrar la aplicación actual antes de que ingrese el siguiente. Este bloqueo evita dos procesos locales, pero no reemplaza el futuro inicio de sesión individual.
+- `AKRON_DB_URL`: opcional; por defecto `jdbc:postgresql://localhost:5432/akron_db`.
+- `AKRON_DB_USER`: usuario PostgreSQL con permisos sobre `akron_db`.
+- `AKRON_DB_PASSWORD`: contraseña de ese usuario.
+
+La base y los scripts PostgreSQL deben estar preparados según `database/README.md`. En el primer inicio, AKRON solicita crear la cuenta inicial OWNER. En los siguientes inicios solicita usuario y contraseña; tras cinco intentos fallidos, se cierra.
+
+La autenticación y los permisos ya se consultan en PostgreSQL. **Los módulos comerciales (categorías, productos, clientes y ventas) todavía utilizan SQLite** en esta rama y su migración a PostgreSQL está pendiente. No se deben confundir las dos persistencias.
+
+**Uso exclusivo local:** solo se permite una instancia de AKRON abierta por instalación. Para cambiar de empleado, se debe cerrar la aplicación actual antes de que ingrese el siguiente.
 
 ## Funciones disponibles en el menú
 
@@ -39,9 +47,10 @@ Minimercado La 12,100200301,3007654321,Carrera 12
 
 Los documentos duplicados o las filas inválidas se rechazan sin detener toda la importación. Para esta versión, los campos no deben contener comas internas. Al elegir la opción 7, ingrese la ruta local del archivo.
 
-## Arquitectura
+## Arquitectura actual
 
-`Consola → Controller → Service → Repository → SQLite`
+- Autenticación y usuarios: `Consola → AuthenticationService / UserManagementService → PostgreSQL`.
+- Módulos comerciales pendientes de migración: `Consola → Controller → Service → Repository → SQLite`.
 
 - **Model:** entidades del dominio.
 - **Controller:** coordinación de operaciones.
@@ -61,12 +70,10 @@ Los documentos duplicados o las filas inválidas se rechazan sin detener toda la
 
 Ejecute `mvn clean verify` para compilar y ejecutar las pruebas automatizadas.
 
-## Base de datos PostgreSQL (en desarrollo)
+## PostgreSQL y autenticación
 
-La rama `dev1-database` contiene el diseño lógico, el diccionario de datos, el diagrama entidad-relación y scripts iniciales para crear `akron_db` en PostgreSQL. Consulta `docs/database/DATABASE_DESIGN.md` y `database/README.md`.
-
-**Importante:** la aplicación Java de esta rama todavía utiliza SQLite. Los scripts PostgreSQL son el diseño y la preparación de la futura integración; no significan que los repositorios Java ya se hayan migrado.
+Los scripts de `database/` crean el esquema `akron_db`, roles, permisos y métodos de pago. La aplicación utiliza PostgreSQL para autenticación, gestión de usuarios y permisos. Consulta `docs/database/JAVA_POSTGRES_MIGRATION.md` para conocer lo que ya está integrado y lo que sigue pendiente.
 
 ## Alcance
 
-Esta entrega incorpora una interfaz interactiva de consola y carga externa CSV de clientes. No es todavía una aplicación web ni una API REST. Cada instalación local conserva su propia información y admite un solo operador activo a la vez.
+La aplicación sigue siendo una interfaz de consola; no es todavía una aplicación web ni una API REST. La rama es una etapa de migración: autenticación y usuarios usan PostgreSQL, mientras los datos comerciales siguen en SQLite. Cada instalación admite un solo operador activo a la vez.
