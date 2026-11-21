@@ -33,7 +33,8 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 - `PostgresClienteRepository`: create, update, find by ID, find by document, list and delete customers. Blank/optional documents are stored as SQL `NULL`, and the database unique constraint remains the final duplicate guard.
 - `PostgresMetodoPagoRepository`: find a payment method by ID and list active methods from the PostgreSQL catalog.
 - `PostgresVentaRepository`: persist a completed sale and its detail snapshots, conditionally decrement stock, and append one `SALE` inventory movement per detail in a single transaction. Any failure rolls back all of those changes.
-- `PostgresVentaService`: prepares sale snapshots using the authenticated operator, optional customer and active payment method; it does not change stock itself.
+- `PostgresVentaService`: prepares sale snapshots using the authenticated operator, optional customer and active payment method; it does not change stock itself and delegates creation to the atomic repository transaction.
+- `PostgresSaleOperations` and `PostgresVentaRepository.cancelCompletedSale`: lock the completed sale, restore stock and append `SALE_REVERSAL` movements before marking it cancelled, all in one transaction.
 - All repository adapters use the existing `ConnectionProvider` and PostgreSQL schema.
 - These adapters are implemented but are not yet wired into application startup. Keeping the current SQLite services together temporarily avoids splitting a sale between SQLite and PostgreSQL while stock updates are still coupled to `ProductService`.
 
@@ -51,18 +52,17 @@ AKRON is being migrated incrementally to PostgreSQL. The target is a fresh Postg
 | Payment methods in running app | Not yet connected |
 | PostgreSQL payment method adapter | Implemented, awaiting coordinated cutover |
 | PostgreSQL sale repository and transaction | Implemented, not yet wired or integration-tested |
-| PostgreSQL sale service | Implemented, not yet wired into the console flow |
+| PostgreSQL sale service | Creation and cancellation implemented, not yet wired into the console flow |
 | Sales and sale details | SQLite (temporary) |
 | Inventory movements | Not yet migrated |
 | Analytics | Existing SQLite sales source (temporary) |
 
 ## Next migration steps
 
-1. Implement sale cancellation/reversal with the same atomicity guarantees as sale creation.
-2. Implement PostgreSQL inventory entry, exit and adjustment transactions with append-only movement history.
-3. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together.
-4. Migrate analytics to PostgreSQL views and queries.
-5. Remove SQLite dependencies and adapters after the replacement is verified.
-6. Add PostgreSQL integration tests and verify the schema on a clean local database.
+1. Implement PostgreSQL inventory entry, exit and adjustment transactions with append-only movement history.
+2. Wire categories, products, customers, payment methods, sales and inventory to PostgreSQL together.
+3. Migrate analytics to PostgreSQL views and queries.
+4. Remove SQLite dependencies and adapters after the replacement is verified.
+5. Add PostgreSQL integration tests and verify the schema on a clean local database.
 
 The application is not yet fully migrated: the running commercial modules still depend on SQLite. Do not treat the mixed authentication/business persistence stage as production-ready.
