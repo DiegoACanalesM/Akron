@@ -38,6 +38,8 @@ public final class MainView extends BorderPane {
         navigation.getChildren().addAll(
                 navButton("Dashboard"), navButton("Products"), navButton("Categories"), navButton("Sales"),
                 navButton("Inventory"), navButton("Reports"));
+        if (session.hasPermission("CUSTOMERS_VIEW")) navigation.getChildren().add(navButton("Customers"));
+        if (session.hasPermission("USERS_MANAGE")) navigation.getChildren().add(navButton("Users"));
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         Button logoutButton = new Button("Cerrar sesión");
@@ -69,6 +71,14 @@ public final class MainView extends BorderPane {
                 case "Sales" -> content.getChildren().add(new SalesView(context));
                 case "Inventory" -> content.getChildren().add(new InventoryView(context));
                 case "Reports" -> content.getChildren().add(new ReportsView(context));
+                case "Customers" -> {
+                    session.requirePermission("CUSTOMERS_VIEW");
+                    content.getChildren().add(new CustomersView(context));
+                }
+                case "Users" -> {
+                    session.requirePermission("USERS_MANAGE");
+                    content.getChildren().add(new UserManagementView(context, session));
+                }
                 default -> throw new IllegalArgumentException("Unknown page");
             }
         } catch (RuntimeException error) {
