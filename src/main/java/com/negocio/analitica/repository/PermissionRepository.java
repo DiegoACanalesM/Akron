@@ -5,5 +5,5 @@ import java.util.Set;
 /** Reads effective permissions after applying individual user overrides. */
 public interface PermissionRepository {
     Set<String> findEffectivePermissionCodes(Long userId);
-    Set<String> findAllPermissionCodes();
+    default Set<String> findAllPermissionCodes() { return Set.of(); }
 }
