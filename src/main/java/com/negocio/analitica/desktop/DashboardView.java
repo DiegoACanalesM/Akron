@@ -23,17 +23,25 @@ public final class DashboardView extends VBox {
         greeting.getStyleClass().add("page-subtitle");
 
         NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-CO"));
-        var products = context.products().getAllProducts().stream().filter(Product::isActive).toList();
-        var categories = context.categories().getAllCategories().stream().filter(c -> c.isActive()).toList();
-        int lowStock = (int) products.stream().filter(p -> p.getStock() <= p.getMinimumStock()).count();
-        double inventoryValue = products.stream().mapToDouble(p -> p.getPrice() * p.getStock()).sum();
+        boolean canViewProducts = session.hasPermission("PRODUCTS_VIEW");
+        boolean canViewCategories = session.hasPermission("CATEGORIES_VIEW");
+        var products = canViewProducts
+                ? context.products().getAllProducts().stream().filter(Product::isActive).toList()
+                : java.util.List.<Product>of();
+        var categories = canViewCategories
+                ? context.categories().getAllCategories().stream().filter(c -> c.isActive()).toList()
+                : java.util.List.of();
+        int lowStock = canViewProducts
+                ? (int) products.stream().filter(p -> p.getStock() <= p.getMinimumStock()).count() : 0;
+        double inventoryValue = canViewProducts
+                ? products.stream().mapToDouble(p -> p.getPrice() * p.getStock()).sum() : 0;
 
         GridPane cards = new GridPane();
         cards.setHgap(14); cards.setVgap(14);
-        cards.add(metric("Productos activos", String.valueOf(products.size()), false), 0, 0);
-        cards.add(metric("Categorías activas", String.valueOf(categories.size()), false), 1, 0);
-        cards.add(metric("Productos con stock bajo", String.valueOf(lowStock), lowStock > 0), 2, 0);
-        cards.add(metric("Valor del inventario", currency.format(inventoryValue), false), 0, 1, 3, 1);
+        cards.add(metric("Productos activos", canViewProducts ? String.valueOf(products.size()) : "Sin permiso", false), 0, 0);
+        cards.add(metric("Categorías activas", canViewCategories ? String.valueOf(categories.size()) : "Sin permiso", false), 1, 0);
+        cards.add(metric("Productos con stock bajo", canViewProducts ? String.valueOf(lowStock) : "Sin permiso", lowStock > 0), 2, 0);
+        cards.add(metric("Valor del inventario", canViewProducts ? currency.format(inventoryValue) : "Sin permiso", false), 0, 1, 3, 1);
 
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
