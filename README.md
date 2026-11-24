@@ -28,7 +28,7 @@ En el primer inicio, AKRON solicita crear la cuenta inicial OWNER. En los siguie
 
 ## Persistencia
 
-La rama `dev1-postgresql-integration` conecta autenticación, usuarios, permisos y todos los módulos comerciales a PostgreSQL. Categorías, productos, clientes, métodos de pago, ventas, detalles e inventario comparten la misma base local.
+La rama `feature/javafx-desktop-ui` integra la interfaz JavaFX con los controladores, servicios y repositorios PostgreSQL. La integración de persistencia se desarrolló previamente en `dev1-postgresql-integration`. Categorías, productos, clientes, métodos de pago, ventas, detalles e inventario comparten la misma base local.
 
 La creación y cancelación de ventas actualizan existencias y registran movimientos de inventario en transacciones atómicas. Las entradas, salidas y ajustes manuales también guardan el historial junto con la actualización del stock. Los cambios de existencias no deben hacerse directamente desde una edición de producto. Los productos activos de categorías desactivadas no pueden venderse, pero sus existencias siguen disponibles para consulta y gestión de inventario.
 
@@ -91,6 +91,6 @@ Ejecuta `mvn clean verify` para compilar y ejecutar las pruebas automatizadas. J
 
 ## Alcance y estado
 
-La interfaz JavaFX de escritorio está en construcción en la rama `feature/javafx-desktop-ui`. Esta primera etapa incorpora inicio de sesión y configuración inicial del propietario, ventana principal, dashboard con indicadores reales, consulta de productos y categorías e identificación de productos con stock bajo. Las pantallas de inventario y reportes están en su primera versión de consulta; todavía faltan formularios de edición, movimientos desde la interfaz, ventas, gráficos y exportación.
+La interfaz JavaFX de escritorio está en desarrollo en la rama `feature/javafx-desktop-ui`. Incluye inicio de sesión y configuración inicial del propietario, navegación principal, dashboard, catálogo de productos, gestión de categorías, operaciones de inventario, registro e historial de ventas y reportes con filtros por período, indicadores y gráficos. La exportación de reportes, pruebas manuales de interfaz y validación en equipos locales siguen pendientes.
 
-La lógica de negocio y la persistencia siguen separadas de la interfaz. La aplicación móvil no está incluida en esta entrega: una futura versión móvil deberá comunicarse con un servicio/API seguro en lugar de conectarse directamente a PostgreSQL. La interfaz JavaFX debe probarse en un equipo local con PostgreSQL antes de considerarse lista para uso real. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
+La lógica de negocio y la persistencia siguen separadas de la interfaz. Esta entrega es una aplicación de escritorio. JavaFX no convierte automáticamente el programa en una aplicación Android: para una futura versión móvil se deberá evaluar una distribución compatible o construir un cliente móvil que consuma una API segura, reutilizando las reglas de negocio cuando corresponda. La interfaz JavaFX debe probarse en un equipo local con PostgreSQL antes de considerarse lista para uso real. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
