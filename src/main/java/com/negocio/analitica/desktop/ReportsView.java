@@ -175,9 +175,9 @@ public final class ReportsView extends VBox {
         if (file == null) return;
         try {
             StringBuilder csv = new StringBuilder();
-            csv.append("AKRON - Reporte de ventas\\n");
-            csv.append("Desde;").append(start).append(";Hasta;").append(end).append("\\n");
-            csv.append("Venta;Fecha;Cliente ID;Estado;Producto;Cantidad;Precio unitario;Subtotal\\n");
+            csv.append("AKRON - Reporte de ventas\n");
+            csv.append("Desde;").append(start).append(";Hasta;").append(end).append("\n");
+            csv.append("Venta;Fecha;Cliente ID;Estado;Producto;Cantidad;Precio unitario;Subtotal\n");
             for (Venta sale : context.analytics().ventasEntre(start, end)) {
                 for (var detail : sale.getDetalles()) {
                     csv.append(csvCell(sale.getId())).append(';')
@@ -190,11 +190,11 @@ public final class ReportsView extends VBox {
                             .append(String.format(Locale.ROOT, "%.2f", detail.getSubtotal())).append('\n');
                 }
             }
-            Files.writeString(file.toPath(), "\\uFEFF" + csv, StandardCharsets.UTF_8);
+            Files.writeString(file.toPath(), csv.toString(), StandardCharsets.UTF_8);
             Alert success = new Alert(Alert.AlertType.INFORMATION);
             success.setTitle("Exportación completada");
             success.setHeaderText("Reporte exportado");
-            success.setContentText("El archivo CSV se guardó correctamente en:\\n" + file.getAbsolutePath());
+            success.setContentText("El archivo CSV se guardó correctamente en:\n" + file.getAbsolutePath());
             success.showAndWait();
         } catch (Exception error) {
             showError(error.getMessage() == null ? "No se pudo exportar el reporte." : error.getMessage());
