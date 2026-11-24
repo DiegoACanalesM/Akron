@@ -2,6 +2,7 @@ package com.negocio.analitica.desktop;
 
 import com.negocio.analitica.model.Category;
 import com.negocio.analitica.model.Product;
+import com.negocio.analitica.security.AuthenticatedSession;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -16,12 +17,14 @@ import java.util.function.Function;
 /** Product catalogue with create, edit, search and soft-deactivation actions. */
 public final class ProductsView extends VBox {
     private final DesktopContext context;
+    private final AuthenticatedSession session;
     private final TableView<Product> table = new TableView<>();
     private final TextField search = new TextField();
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-CO"));
 
-    public ProductsView(DesktopContext context) {
+    public ProductsView(DesktopContext context, AuthenticatedSession session) {
         this.context = context;
+        this.session = session;
         setSpacing(18);
         setPadding(new Insets(34));
 
@@ -31,6 +34,7 @@ public final class ProductsView extends VBox {
         subtitle.getStyleClass().add("page-subtitle");
 
         Button add = new Button("Agregar producto");
+        add.setDisable(!session.hasPermission("PRODUCTS_MANAGE"));
         add.getStyleClass().add("primary-button");
         add.setOnAction(event -> openProductDialog(null));
 
@@ -87,6 +91,8 @@ public final class ProductsView extends VBox {
             private final Button deactivate = new Button("Desactivar");
             private final HBox actions = new HBox(8, edit, deactivate);
             {
+                edit.setDisable(!session.hasPermission("PRODUCTS_MANAGE"));
+                deactivate.setDisable(!session.hasPermission("PRODUCTS_MANAGE"));
                 edit.setOnAction(event -> openProductDialog(getItem()));
                 deactivate.setOnAction(event -> deactivate(getItem()));
             }
@@ -99,6 +105,7 @@ public final class ProductsView extends VBox {
     }
 
     private void openProductDialog(Product selected) {
+        session.requirePermission("PRODUCTS_MANAGE");
         boolean editing = selected != null;
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(editing ? "Editar producto" : "Nuevo producto");
@@ -188,6 +195,7 @@ public final class ProductsView extends VBox {
     }
 
     private void deactivate(Product product) {
+        session.requirePermission("PRODUCTS_MANAGE");
         if (product == null) return;
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Desactivar producto");
