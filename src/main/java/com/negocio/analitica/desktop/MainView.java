@@ -36,7 +36,7 @@ public final class MainView extends BorderPane {
         Label subtitle = new Label("Sales & Inventory");
         subtitle.getStyleClass().add("sidebar-subtitle");
         navigation.getChildren().addAll(
-                navButton("Dashboard"), navButton("Products"), navButton("Categories"),
+                navButton("Dashboard"), navButton("Products"), navButton("Categories"), navButton("Sales"),
                 navButton("Inventory"), navButton("Reports"));
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -66,6 +66,7 @@ public final class MainView extends BorderPane {
                 case "Dashboard" -> content.getChildren().add(new DashboardView(context, session));
                 case "Products" -> content.getChildren().add(new ProductsView(context));
                 case "Categories" -> content.getChildren().add(new CategoriesView(context));
+                case "Sales" -> content.getChildren().add(new SalesView(context));
                 case "Inventory" -> content.getChildren().add(new InventoryView(context));
                 case "Reports" -> content.getChildren().add(new ReportsView(context));
                 default -> throw new IllegalArgumentException("Unknown page");
