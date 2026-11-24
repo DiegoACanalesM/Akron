@@ -191,7 +191,7 @@ public final class ConsoleMenu {
     }
 
     private void registrarProducto() {
-        List<Category> lista = categories.getAllCategories();
+        List<Category> lista = categories.getAllCategories().stream().filter(Category::isActive).toList();
         if (lista.isEmpty()) { System.out.println("Primero debe registrar una categoría."); return; }
         System.out.println("\nCategorías disponibles:");
         lista.forEach(c -> System.out.printf("%d - %s%n", c.getId(), c.getName()));
@@ -243,7 +243,8 @@ public final class ConsoleMenu {
 
     private void registrarVenta() {
         List<Cliente> listaClientes = clientes.listar();
-        List<Product> listaProductos = products.getAllProducts().stream().filter(Product::isActive).toList();
+        List<Product> listaProductos = products.getAllProducts().stream()
+                .filter(Product::isActive).filter(p -> p.getCategory().isActive()).toList();
         if (listaProductos.isEmpty()) {
             System.out.println("Se necesita al menos un producto activo."); return;
         }
@@ -298,7 +299,7 @@ public final class ConsoleMenu {
                 sale.getClienteNombre() == null ? "Sin cliente" : sale.getClienteNombre(),
                 sale.getTotal()));
         Venta sale = ventas.obtener(leerLong("ID de la venta: "));
-        System.out.printf("\\n--- DETALLE DE VENTA #%d ---\\n", sale.getId());
+        System.out.printf("\n--- DETALLE DE VENTA #%d ---\n", sale.getId());
         System.out.println("Fecha: " + sale.getFecha());
         System.out.println("Cliente: " + (sale.getClienteNombre() == null ? "Sin cliente" : sale.getClienteNombre()));
         System.out.println("Método de pago: " + sale.getMetodoPago());
