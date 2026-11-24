@@ -11,10 +11,10 @@ import java.util.function.Consumer;
 public final class LoginView extends BorderPane {
     private final DesktopContext context;
     private final Consumer<AuthenticatedSession> onAuthenticated;
-    private final TextField username = new TextField();
-    private final TextField fullName = new TextField();
-    private final PasswordField password = new PasswordField();
-    private final PasswordField confirmation = new PasswordField();
+    private TextField username;
+    private TextField fullName;
+    private PasswordField password;
+    private PasswordField confirmation;
     private Label feedback = new Label();
 
     public LoginView(DesktopContext context, Consumer<AuthenticatedSession> onAuthenticated) {
@@ -45,6 +45,11 @@ public final class LoginView extends BorderPane {
     }
 
     private VBox buildForm() {
+        username = new TextField();
+        fullName = new TextField();
+        password = new PasswordField();
+        confirmation = new PasswordField();
+        feedback = new Label();
         VBox form = new VBox(14);
         form.setAlignment(Pos.CENTER_LEFT);
         form.setMaxWidth(430);
@@ -103,8 +108,6 @@ public final class LoginView extends BorderPane {
                 context.createOwner(user, fullName.getText(), password.getText().toCharArray());
                 password.clear();
                 confirmation.clear();
-                feedback = new Label();
-                feedback.getStyleClass().add("feedback");
                 setCenter(buildForm());
                 return;
             }
