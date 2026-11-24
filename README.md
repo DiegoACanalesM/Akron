@@ -67,7 +67,7 @@ Los documentos duplicados o las filas inválidas se rechazan sin detener toda la
 
 ## Arquitectura
 
-`Consola → Controller → Service → Repository → PostgreSQL`
+`JavaFX (desktop) → Controller → Service → Repository → PostgreSQL`
 
 - **Model:** entidades del dominio.
 - **Controller:** coordinación de operaciones.
@@ -78,6 +78,7 @@ Los documentos duplicados o las filas inválidas se rechazan sin detener toda la
 ## Tecnologías
 
 - Java 17
+- JavaFX 21
 - Maven
 - PostgreSQL JDBC
 - SQLite JDBC (adaptadores heredados)
