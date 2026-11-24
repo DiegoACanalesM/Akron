@@ -91,6 +91,8 @@ Ejecuta `mvn clean verify` para compilar y ejecutar las pruebas automatizadas. J
 
 ## Alcance y estado
 
-La interfaz JavaFX de escritorio está en desarrollo en la rama `feature/javafx-desktop-ui`. Incluye inicio de sesión y configuración inicial del propietario, navegación principal, dashboard, catálogo de productos, gestión de categorías, operaciones de inventario, registro e historial de ventas y reportes con filtros por período, indicadores y gráficos. La exportación de reportes, pruebas manuales de interfaz y validación en equipos locales siguen pendientes.
+La interfaz JavaFX de escritorio está implementada en la rama `feature/javafx-desktop-ui`. Incluye inicio de sesión y configuración inicial del propietario, navegación principal, dashboard con indicadores comerciales e inventario, catálogo de productos, gestión de categorías, clientes, operaciones de inventario, registro e historial de ventas, administración de cuentas de empleado y permisos, y reportes con filtros por período, indicadores y gráficos. Los reportes de ventas se pueden exportar a CSV desde el período seleccionado.
+
+La verificación automatizada de la rama y las pruebas manuales de la interfaz deben completarse antes de considerar esta entrega lista para uso real. También se debe validar el flujo completo con PostgreSQL en un equipo local.
 
 La lógica de negocio y la persistencia siguen separadas de la interfaz. Esta entrega es una aplicación de escritorio. JavaFX no convierte automáticamente el programa en una aplicación Android: para una futura versión móvil se deberá evaluar una distribución compatible o construir un cliente móvil que consuma una API segura, reutilizando las reglas de negocio cuando corresponda. La interfaz JavaFX debe probarse en un equipo local con PostgreSQL antes de considerarse lista para uso real. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
