@@ -101,9 +101,9 @@ public final class LoginView extends BorderPane {
                     return;
                 }
                 context.createOwner(user, fullName.getText(), password.getText().toCharArray());
-                feedback.setText("Cuenta creada. Ahora inicia sesión.");
-                getChildren().clear();
-                setCenter(buildLoginAfterSetup());
+                password.clear();
+                confirmation.clear();
+                setCenter(buildForm());
                 return;
             }
             AuthenticatedSession session = context.login(user, password.getText().toCharArray());
@@ -112,14 +112,11 @@ public final class LoginView extends BorderPane {
                 password.clear();
                 return;
             }
+            context.activateSession(session);
             onAuthenticated.accept(session);
         } catch (RuntimeException error) {
             feedback.setText(error.getMessage() == null ? "No se pudo completar la operación." : error.getMessage());
         }
     }
 
-    private VBox buildLoginAfterSetup() {
-        LoginView replacement = new LoginView(context, onAuthenticated);
-        return (VBox) replacement.getCenter();
-    }
 }
