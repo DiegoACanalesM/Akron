@@ -53,7 +53,8 @@ public class AnaliticaService {
     }
     public List<Product> productosConStockBajo() {
         return productOperations.findAllProducts().stream()
-                .filter(p->p.getStock()<=p.getMinimumStock())
+                .filter(Product::isActive)
+                .filter(p -> p.getStock() <= p.getMinimumStock())
                 .sorted(Comparator.comparing(Product::getName)).toList();
     }
     public double variacionPorcentual(double totalAnterior, double totalActual) {
