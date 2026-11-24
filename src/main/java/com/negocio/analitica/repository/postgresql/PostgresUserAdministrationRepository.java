@@ -56,6 +56,28 @@ public final class PostgresUserAdministrationRepository implements UserAdministr
     }
 
     @Override
+    public boolean isEmployee(Long userId) {
+        if (userId == null) return false;
+        String sql = """
+                SELECT EXISTS (
+                    SELECT 1 FROM user_roles ur
+                    JOIN roles r ON r.id = ur.role_id
+                    WHERE ur.user_id = ? AND r.name = 'EMPLOYEE'
+                )
+                """;
+        try (Connection connection = connections.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, userId);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getBoolean(1);
+            }
+        } catch (SQLException error) {
+            throw new IllegalStateException("No se pudo consultar el rol del usuario.", error);
+        }
+    }
+
+    @Override
     public void createUserWithRole(Usuario user, String roleName) {
         if (user == null || user.getUsername() == null || user.getUsername().isBlank()
                 || user.getPasswordHash() == null || user.getPasswordHash().isBlank()
