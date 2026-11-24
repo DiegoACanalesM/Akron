@@ -7,7 +7,7 @@ import java.util.List;
 public interface UserAdministrationRepository {
     boolean hasAnyUser();
     List<Usuario> findAllUsers();
-    boolean isEmployee(Long userId);
+    default boolean isEmployee(Long userId) { return false; }
     void createUserWithRole(Usuario user, String roleName);
     void setUserActive(Long userId, boolean active);
 }
