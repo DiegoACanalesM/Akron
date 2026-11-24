@@ -6,11 +6,15 @@ public class Cliente {
     private String documento;
     private String telefono;
     private String direccion;
+    private boolean active = true;
 
     public Cliente() { }
     public Cliente(Long id, String nombre, String documento, String telefono, String direccion) {
+        this(id, nombre, documento, telefono, direccion, true);
+    }
+    public Cliente(Long id, String nombre, String documento, String telefono, String direccion, boolean active) {
         this.id = id; this.nombre = nombre; this.documento = documento;
-        this.telefono = telefono; this.direccion = direccion;
+        this.telefono = telefono; this.direccion = direccion; this.active = active;
     }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -22,4 +26,6 @@ public class Cliente {
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public String getDireccion() { return direccion; }
     public void setDireccion(String direccion) { this.direccion = direccion; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 }

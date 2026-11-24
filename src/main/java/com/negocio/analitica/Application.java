@@ -71,8 +71,9 @@ public final class Application {
         System.out.println("Ventas e inventario comparten transacciones en la misma base de datos.");
 
         CsvClienteImporter csvClienteImporter = new CsvClienteImporter(clientes);
+        InventoryController inventory = new InventoryController(inventoryService);
         new ConsoleMenu(scanner, categories, products, clientes, ventas, analitica,
                 csvClienteImporter, session, userManagement, permissionManagement,
-                paymentMethodRepository).iniciar();
+                paymentMethodRepository, inventory).iniciar();
     }
 }

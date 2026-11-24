@@ -8,6 +8,7 @@ import com.negocio.analitica.security.ConsoleAuthenticationFlow;
 import com.negocio.analitica.service.UserManagementService;
 import com.negocio.analitica.service.PermissionManagementService;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -28,6 +29,7 @@ public final class ConsoleMenu {
     private final UserManagementService userManagement;
     private final PermissionManagementService permissionManagement;
     private final MetodoPagoRepository paymentMethods;
+    private final InventoryController inventory;
 
     public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
                        ClienteController clientes, VentaController ventas, AnaliticaController analitica,
@@ -35,7 +37,7 @@ public final class ConsoleMenu {
                        UserManagementService userManagement,
                        PermissionManagementService permissionManagement) {
         this(scanner, categories, products, clientes, ventas, analitica, csvClienteImporter,
-                session, userManagement, permissionManagement, null);
+                session, userManagement, permissionManagement, null, null);
     }
 
     public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
@@ -44,6 +46,16 @@ public final class ConsoleMenu {
                        UserManagementService userManagement,
                        PermissionManagementService permissionManagement,
                        MetodoPagoRepository paymentMethods) {
+        this(scanner, categories, products, clientes, ventas, analitica, csvClienteImporter,
+                session, userManagement, permissionManagement, paymentMethods, null);
+    }
+
+    public ConsoleMenu(Scanner scanner, CategoryController categories, ProductController products,
+                       ClienteController clientes, VentaController ventas, AnaliticaController analitica,
+                       CsvClienteImporter csvClienteImporter, AuthenticatedSession session,
+                       UserManagementService userManagement,
+                       PermissionManagementService permissionManagement,
+                       MetodoPagoRepository paymentMethods, InventoryController inventory) {
         this.scanner = scanner;
         this.categories = categories;
         this.products = products;
@@ -55,6 +67,7 @@ public final class ConsoleMenu {
         this.userManagement = java.util.Objects.requireNonNull(userManagement);
         this.permissionManagement = java.util.Objects.requireNonNull(permissionManagement);
         this.paymentMethods = paymentMethods;
+        this.inventory = inventory;
     }
 
     public void iniciar() {
@@ -74,6 +87,16 @@ public final class ConsoleMenu {
             System.out.println("10. Consultar productos con stock bajo");
             System.out.println("11. Administrar usuarios y permisos");
             if (paymentMethods != null) System.out.println("12. Cancelar una venta");
+            if (inventory != null) {
+                System.out.println("13. Ajustar existencias");
+                System.out.println("14. Consultar historial de inventario");
+            }
+            System.out.println("15. Editar producto");
+            System.out.println("16. Desactivar producto");
+            System.out.println("17. Editar cliente");
+            System.out.println("18. Desactivar cliente");
+            System.out.println("19. Editar categoría");
+            System.out.println("20. Desactivar categoría");
             System.out.println("0. Cerrar sesión y salir");
             try {
                 int opcion = leerEntero("Seleccione una opción: ");
@@ -82,13 +105,21 @@ public final class ConsoleMenu {
                     case 2 -> { require("PRODUCTS_MANAGE"); registrarProducto(); }
                     case 3 -> { require("CUSTOMERS_MANAGE"); registrarCliente(); }
                     case 4 -> { require("SALES_CREATE"); registrarVenta(); }
-                    case 5 -> { requireAll("CATEGORIES_VIEW", "PRODUCTS_VIEW", "CUSTOMERS_VIEW", "SALES_VIEW"); consultarDatos(); }
+                    case 5 -> consultarDatos();
                     case 6 -> { require("ANALYTICS_VIEW"); mostrarIndicadores(); }
                     case 7 -> { require("CUSTOMERS_MANAGE"); importarClientesCsv(); }
                     case 8, 9 -> { require("INVENTORY_MANAGE"); if (opcion == 8) registrarEntradaInventario(); else registrarSalidaInventario(); }
                     case 10 -> { require("INVENTORY_VIEW"); consultarStockBajo(); }
                     case 11 -> { require("USERS_MANAGE"); administrarUsuarios(); }
                     case 12 -> { if (paymentMethods == null) throw new IllegalArgumentException("Opción no disponible."); require("SALES_CANCEL"); cancelarVenta(); }
+                    case 13 -> { require("INVENTORY_MANAGE"); requireInventory(); ajustarInventario(); }
+                    case 14 -> { require("INVENTORY_VIEW"); requireInventory(); consultarHistorialInventario(); }
+                    case 15 -> { require("PRODUCTS_MANAGE"); editarProducto(); }
+                    case 16 -> { require("PRODUCTS_MANAGE"); desactivarProducto(); }
+                    case 17 -> { require("CUSTOMERS_MANAGE"); editarCliente(); }
+                    case 18 -> { require("CUSTOMERS_MANAGE"); desactivarCliente(); }
+                    case 19 -> { require("CATEGORIES_MANAGE"); editarCategoria(); }
+                    case 20 -> { require("CATEGORIES_MANAGE"); desactivarCategoria(); }
                     case 0 -> { continuar = false; System.out.println("Sesión finalizada. Los datos permanecen guardados."); }
                     default -> System.out.println("Opción no válida.");
                 }
@@ -210,13 +241,18 @@ public final class ConsoleMenu {
 
     private void registrarVenta() {
         List<Cliente> listaClientes = clientes.listar();
-        List<Product> listaProductos = products.getAllProducts();
-        if (listaClientes.isEmpty() || listaProductos.isEmpty()) {
-            System.out.println("Se necesita al menos un cliente y un producto registrado."); return;
+        List<Product> listaProductos = products.getAllProducts().stream().filter(Product::isActive).toList();
+        if (listaProductos.isEmpty()) {
+            System.out.println("Se necesita al menos un producto activo."); return;
         }
-        System.out.println("\nClientes:");
+        System.out.println("\nClientes (opcional):");
         listaClientes.forEach(c -> System.out.printf("%d - %s (%s)%n", c.getId(), c.getNombre(), c.getDocumento()));
-        long clienteId = leerLong("ID del cliente: ");
+        System.out.println("0 - Venta sin cliente");
+        long selectedCustomer = leerLong("ID del cliente (0 si no aplica): ");
+        Long clienteId = selectedCustomer == 0 ? null : selectedCustomer;
+        if (clienteId != null && listaClientes.stream().noneMatch(c -> c.getId().equals(clienteId))) {
+            throw new IllegalArgumentException("El cliente seleccionado no está activo o no existe.");
+        }
         System.out.println("\nProductos:");
         listaProductos.forEach(p -> System.out.printf("%d - %s | $%.2f | stock: %d%n",
                 p.getId(), p.getName(), p.getPrice(), p.getStock()));
@@ -264,17 +300,28 @@ public final class ConsoleMenu {
     }
 
     private void consultarDatos() {
-        System.out.println("\n--- CATEGORÍAS ---");
-        categories.getAllCategories().forEach(c -> System.out.printf("%d | %s | %s%n", c.getId(), c.getName(), c.getDescription()));
-        System.out.println("\n--- PRODUCTOS ---");
-        products.getAllProducts().forEach(p -> System.out.printf("%d | %s | $%.2f | stock %d | mínimo %d%n",
-                p.getId(), p.getName(), p.getPrice(), p.getStock(), p.getMinimumStock()));
-        System.out.println("\n--- CLIENTES ---");
-        clientes.listar().forEach(c -> System.out.printf("%d | %s | documento %s | %s%n",
-                c.getId(), c.getNombre(), c.getDocumento(), c.getTelefono()));
-        System.out.println("\n--- VENTAS ---");
-        ventas.listar().forEach(v -> System.out.printf("%d | %s | %s | $%.2f%n",
-                v.getId(), v.getFecha(), v.getClienteNombre(), v.getTotal()));
+        if (session.hasPermission("CATEGORIES_VIEW")) {
+            System.out.println("\n--- CATEGORÍAS ---");
+            categories.getAllCategories().forEach(c -> System.out.printf("%d | %s | %s | %s%n",
+                    c.getId(), c.getName(), c.getDescription(), c.isActive() ? "ACTIVA" : "INACTIVA"));
+        }
+        if (session.hasPermission("PRODUCTS_VIEW")) {
+            System.out.println("\n--- PRODUCTOS ---");
+            products.getAllProducts().forEach(p -> System.out.printf("%d | %s | $%.2f | stock %d | mínimo %d | %s%n",
+                    p.getId(), p.getName(), p.getPrice(), p.getStock(), p.getMinimumStock(),
+                    p.isActive() ? "ACTIVO" : "INACTIVO"));
+        }
+        if (session.hasPermission("CUSTOMERS_VIEW")) {
+            System.out.println("\n--- CLIENTES ACTIVOS ---");
+            clientes.listar().forEach(c -> System.out.printf("%d | %s | documento %s | %s%n",
+                    c.getId(), c.getNombre(), c.getDocumento(), c.getTelefono()));
+        }
+        if (session.hasPermission("SALES_VIEW")) {
+            System.out.println("\n--- VENTAS ---");
+            ventas.listar().forEach(v -> System.out.printf("%d | %s | %s | $%.2f | %s%n",
+                    v.getId(), v.getFecha(), v.getClienteNombre() == null ? "Sin cliente" : v.getClienteNombre(),
+                    v.getTotal(), v.getStatus()));
+        }
     }
 
     private void mostrarIndicadores() {
@@ -286,6 +333,20 @@ public final class ConsoleMenu {
         System.out.println("Unidades vendidas: " + analitica.unidadesVendidas(desde, hasta));
         System.out.printf("Ticket promedio: $%.2f%n", analitica.ticketPromedio(desde, hasta));
         System.out.println("Producto más vendido: " + analitica.productoMasVendido(desde, hasta).orElse("Sin ventas"));
+        long days = ChronoUnit.DAYS.between(desde, hasta) + 1;
+        LocalDate previousEnd = desde.minusDays(1);
+        LocalDate previousStart = previousEnd.minusDays(days - 1);
+        double previousTotal = analitica.totalVentas(previousStart, previousEnd);
+        double currentTotal = analitica.totalVentas(desde, hasta);
+        double variation = analitica.variacionPorcentual(previousTotal, currentTotal);
+        System.out.printf("Período anterior (%s a %s): $%.2f%n", previousStart, previousEnd, previousTotal);
+        System.out.printf("Variación frente al período anterior: %.2f%%%n", variation);
+        System.out.println("Ventas por categoría:");
+        analitica.ventasPorCategoria(desde, hasta).forEach((name, total) ->
+                System.out.printf("- %s: $%.2f%n", name, total));
+        System.out.println("Ventas por método de pago:");
+        analitica.ventasPorMetodoPago(desde, hasta).forEach((name, total) ->
+                System.out.printf("- %s: $%.2f%n", name, total));
         System.out.println("Productos con stock bajo:");
         analitica.productosConStockBajo().forEach(p ->
                 System.out.printf("- %s: %d unidades (mínimo %d)%n", p.getName(), p.getStock(), p.getMinimumStock()));
@@ -298,6 +359,117 @@ public final class ConsoleMenu {
                 csvClienteImporter.importar(java.nio.file.Path.of(ruta));
         System.out.printf("Importación terminada. Guardados: %d | Rechazados: %d%n",
                 resultado.importados(), resultado.rechazados());
+    }
+
+
+    private void requireInventory() {
+        if (inventory == null) throw new IllegalArgumentException("El módulo de inventario no está disponible.");
+    }
+
+    private void ajustarInventario() {
+        long productId = leerLong("ID del producto: ");
+        int stock = leerEntero("Nuevo stock físico contado: ");
+        String note = leerTexto("Motivo del ajuste: ");
+        inventory.adjustStock(productId, stock, note);
+        System.out.println("Ajuste registrado en el historial de inventario.");
+    }
+
+    private void consultarHistorialInventario() {
+        long productId = leerLong("ID del producto: ");
+        List<InventoryMovement> movements = inventory.getHistory(productId);
+        if (movements.isEmpty()) { System.out.println("No hay movimientos para ese producto."); return; }
+        System.out.println("\n--- HISTORIAL DE INVENTARIO ---");
+        movements.forEach(m -> System.out.printf(
+                "#%d | %s | %s | cantidad: %d | %d -> %d | %s%n",
+                m.getId(), m.getCreatedAt(), m.getMovementType(), m.getQuantity(),
+                m.getStockBefore(), m.getStockAfter(), m.getNote() == null ? "" : m.getNote()));
+    }
+
+    private void editarProducto() {
+        List<Product> all = products.getAllProducts();
+        all.forEach(p -> System.out.printf("%d | %s | $%.2f | %s%n",
+                p.getId(), p.getName(), p.getPrice(), p.isActive() ? "ACTIVO" : "INACTIVO"));
+        Product current = products.getProduct(leerLong("ID del producto: "));
+        System.out.println("Deje vacío un campo para conservar su valor.");
+        System.out.print("Nombre (" + current.getName() + "): ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Descripción (" + current.getDescription() + "): ");
+        String description = scanner.nextLine().trim();
+        System.out.print("Precio (" + current.getPrice() + "): ");
+        String priceText = scanner.nextLine().trim();
+        System.out.print("Stock mínimo (" + current.getMinimumStock() + "): ");
+        String minimumText = scanner.nextLine().trim();
+        categories.getAllCategories().stream().filter(Category::isActive)
+                .forEach(c -> System.out.printf("%d - %s%n", c.getId(), c.getName()));
+        System.out.print("ID de categoría (" + current.getCategory().getId() + "): ");
+        String categoryText = scanner.nextLine().trim();
+        String finalName = name.isEmpty() ? current.getName() : name;
+        String finalDescription = description.isEmpty() ? current.getDescription() : description;
+        double finalPrice = priceText.isEmpty() ? current.getPrice() : Double.parseDouble(priceText.replace(",", "."));
+        int finalMinimum = minimumText.isEmpty() ? current.getMinimumStock() : Integer.parseInt(minimumText);
+        Category finalCategory = categoryText.isEmpty() ? current.getCategory()
+                : categories.getCategory(Long.parseLong(categoryText));
+        products.updateProduct(new Product(current.getId(), finalName, finalDescription, finalPrice,
+                current.getStock(), finalMinimum, finalCategory, current.isActive()));
+        System.out.println("Producto actualizado. El stock se conserva y solo cambia mediante inventario.");
+    }
+
+    private void desactivarProducto() {
+        Product current = products.getProduct(leerLong("ID del producto a desactivar: "));
+        if (!current.isActive()) { System.out.println("El producto ya está inactivo."); return; }
+        current.setActive(false);
+        products.updateProduct(current);
+        System.out.println("Producto desactivado. Se conserva su historial de ventas e inventario.");
+    }
+
+    private void editarCliente() {
+        List<Cliente> all = clientes.listar();
+        all.forEach(c -> System.out.printf("%d | %s | %s%n", c.getId(), c.getNombre(), c.getDocumento()));
+        Cliente current = clientes.obtener(leerLong("ID del cliente: "));
+        System.out.println("Deje vacío un campo para conservar su valor.");
+        System.out.print("Nombre (" + current.getNombre() + "): ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Documento (" + current.getDocumento() + "): ");
+        String document = scanner.nextLine().trim();
+        System.out.print("Teléfono (" + current.getTelefono() + "): ");
+        String phone = scanner.nextLine().trim();
+        System.out.print("Dirección (" + current.getDireccion() + "): ");
+        String address = scanner.nextLine().trim();
+        Cliente updated = new Cliente(current.getId(), name.isEmpty() ? current.getNombre() : name,
+                document.isEmpty() ? current.getDocumento() : document,
+                phone.isEmpty() ? current.getTelefono() : phone,
+                address.isEmpty() ? current.getDireccion() : address, current.isActive());
+        clientes.actualizar(updated);
+        System.out.println("Cliente actualizado. Su historial de ventas permanece intacto.");
+    }
+
+    private void desactivarCliente() {
+        Cliente current = clientes.obtener(leerLong("ID del cliente a desactivar: "));
+        if (!current.isActive()) { System.out.println("El cliente ya está inactivo."); return; }
+        clientes.eliminar(current.getId());
+        System.out.println("Cliente desactivado. Se conserva su historial de ventas.");
+    }
+
+    private void editarCategoria() {
+        categories.getAllCategories().forEach(c -> System.out.printf("%d | %s | %s%n",
+                c.getId(), c.getName(), c.isActive() ? "ACTIVA" : "INACTIVA"));
+        Category current = categories.getCategory(leerLong("ID de la categoría: "));
+        System.out.print("Nuevo nombre (" + current.getName() + "): ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Nueva descripción (" + current.getDescription() + "): ");
+        String description = scanner.nextLine().trim();
+        categories.updateCategory(new Category(current.getId(),
+                name.isEmpty() ? current.getName() : name,
+                description.isEmpty() ? current.getDescription() : description, current.isActive()));
+        System.out.println("Categoría actualizada.");
+    }
+
+    private void desactivarCategoria() {
+        Category current = categories.getCategory(leerLong("ID de la categoría a desactivar: "));
+        if (!current.isActive()) { System.out.println("La categoría ya está inactiva."); return; }
+        current.setActive(false);
+        categories.updateCategory(current);
+        System.out.println("Categoría desactivada. Los productos y ventas históricos se conservan.");
     }
 
     private String leerTexto(String mensaje) {

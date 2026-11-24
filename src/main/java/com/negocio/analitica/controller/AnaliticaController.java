@@ -23,4 +23,7 @@ public class AnaliticaController {
     public Map<String,Double> ventasPorCategoria(LocalDate desde, LocalDate hasta) { return service.ventasPorCategoria(desde,hasta); }
     public Map<String,Double> ventasPorMetodoPago(LocalDate desde, LocalDate hasta) { return service.ventasPorMetodoPago(desde,hasta); }
     public List<Product> productosConStockBajo() { return service.productosConStockBajo(); }
+    public double variacionPorcentual(double totalAnterior, double totalActual) {
+        return service.variacionPorcentual(totalAnterior, totalActual);
+    }
 }

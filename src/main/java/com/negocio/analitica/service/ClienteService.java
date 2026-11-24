@@ -40,7 +40,10 @@ public class ClienteService implements ClienteLookup {
         if (repository.findById(id).isEmpty()) {
             throw new IllegalArgumentException("Cliente no encontrado.");
         }
-        repository.deleteById(id);
+        Cliente customer = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado."));
+        customer.setActive(false);
+        repository.save(customer);
     }
 
     private void validar(Cliente cliente) {

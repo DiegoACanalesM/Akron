@@ -21,13 +21,13 @@ public final class PostgresClienteRepository implements ClienteRepository {
     public Cliente save(Cliente cliente) {
         if (cliente == null) throw new IllegalArgumentException("Cliente cannot be null.");
         String sql = cliente.getId() == null
-                ? "INSERT INTO customers(name, document, phone, address) VALUES (?, ?, ?, ?) RETURNING id"
-                : "UPDATE customers SET name = ?, document = ?, phone = ?, address = ? WHERE id = ?";
+                ? "INSERT INTO customers(name, document, phone, address, is_active) VALUES (?, ?, ?, ?, ?) RETURNING id"
+                : "UPDATE customers SET name = ?, document = ?, phone = ?, address = ?, is_active = ? WHERE id = ?";
         try (Connection connection = connections.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             bind(statement, cliente);
             if (cliente.getId() != null) {
-                statement.setLong(5, cliente.getId());
+                statement.setLong(6, cliente.getId());
                 if (statement.executeUpdate() == 0) {
                     throw new IllegalArgumentException("Cliente no existe.");
                 }
@@ -46,7 +46,7 @@ public final class PostgresClienteRepository implements ClienteRepository {
     @Override
     public Optional<Cliente> findById(Long id) {
         if (id == null) return Optional.empty();
-        String sql = "SELECT id, name, document, phone, address FROM customers WHERE id = ?";
+        String sql = "SELECT id, name, document, phone, address, is_active FROM customers WHERE id = ?";
         try (Connection connection = connections.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, id);
@@ -61,7 +61,7 @@ public final class PostgresClienteRepository implements ClienteRepository {
     @Override
     public Optional<Cliente> findByDocumento(String documento) {
         if (documento == null || documento.isBlank()) return Optional.empty();
-        String sql = "SELECT id, name, document, phone, address FROM customers WHERE document = ?";
+        String sql = "SELECT id, name, document, phone, address, is_active FROM customers WHERE document = ?";
         try (Connection connection = connections.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, documento.trim());
@@ -75,7 +75,7 @@ public final class PostgresClienteRepository implements ClienteRepository {
 
     @Override
     public List<Cliente> findAll() {
-        String sql = "SELECT id, name, document, phone, address FROM customers ORDER BY name, id";
+        String sql = "SELECT id, name, document, phone, address, is_active FROM customers WHERE is_active = TRUE ORDER BY name, id";
         List<Cliente> customers = new ArrayList<>();
         try (Connection connection = connections.getConnection();
              Statement statement = connection.createStatement();
@@ -92,7 +92,7 @@ public final class PostgresClienteRepository implements ClienteRepository {
         if (id == null) return;
         try (Connection connection = connections.getConnection();
              PreparedStatement statement = connection.prepareStatement(
-                     "DELETE FROM customers WHERE id = ?")) {
+                     "UPDATE customers SET is_active = FALSE WHERE id = ?")) {
             statement.setLong(1, id);
             statement.executeUpdate();
         } catch (SQLException exception) {
@@ -108,10 +108,12 @@ public final class PostgresClienteRepository implements ClienteRepository {
         else statement.setString(2, document.trim());
         statement.setString(3, cliente.getTelefono());
         statement.setString(4, cliente.getDireccion());
+        statement.setBoolean(5, cliente.isActive());
     }
 
     private static Cliente map(ResultSet result) throws SQLException {
         return new Cliente(result.getLong("id"), result.getString("name"),
-                result.getString("document"), result.getString("phone"), result.getString("address"));
+                result.getString("document"), result.getString("phone"), result.getString("address"),
+                result.getBoolean("is_active"));
     }
 }
