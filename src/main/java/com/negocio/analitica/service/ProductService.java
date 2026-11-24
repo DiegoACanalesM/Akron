@@ -36,8 +36,19 @@ public class ProductService implements ProductOperations {
             int initialStock = product.getStock();
             product.setStock(0);
             Product saved = productRepository.save(product);
-            postgresInventory.registerEntry(saved.getId(), initialStock, "Initial stock");
-            return findProductById(saved.getId());
+            try {
+                // The initial stock movement is atomic inside the inventory repository.
+                // If it fails, remove the just-created product so no empty/orphan record remains.
+                postgresInventory.registerEntry(saved.getId(), initialStock, "Initial stock");
+                return findProductById(saved.getId());
+            } catch (RuntimeException failure) {
+                try {
+                    productRepository.deleteById(saved.getId());
+                } catch (RuntimeException cleanupFailure) {
+                    failure.addSuppressed(cleanupFailure);
+                }
+                throw failure;
+            }
         }
         return productRepository.save(product);
     }
