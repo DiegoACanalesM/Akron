@@ -114,7 +114,7 @@ public final class PostgresInventoryRepository implements PostgresInventoryOpera
     @Override
     public InventoryMovement save(InventoryMovement movement) {
         validateMovement(movement);
-        String update = "UPDATE products p SET stock = ? FROM categories c WHERE p.category_id = c.id AND c.is_active = TRUE AND p.is_active = TRUE AND p.id = ? AND p.stock = ? RETURNING p.stock";
+        String update = "UPDATE products SET stock = ? WHERE is_active = TRUE AND id = ? AND stock = ? RETURNING stock";
         try (Connection connection = connections.getConnection()) {
             connection.setAutoCommit(false);
             try {
