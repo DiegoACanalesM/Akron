@@ -37,11 +37,10 @@ public class ProductService implements ProductOperations {
             product.setStock(0);
             Product saved = productRepository.save(product);
             try {
-                // The initial stock movement is atomic inside the inventory repository.
-                // If it fails, remove the just-created product so no empty/orphan record remains.
+                // The movement and stock update are committed together by the inventory repository.
                 postgresInventory.registerEntry(saved.getId(), initialStock, "Initial stock");
-                return findProductById(saved.getId());
             } catch (RuntimeException failure) {
+                // No movement is committed when registerEntry fails, so the new product can be removed.
                 try {
                     productRepository.deleteById(saved.getId());
                 } catch (RuntimeException cleanupFailure) {
@@ -49,6 +48,7 @@ public class ProductService implements ProductOperations {
                 }
                 throw failure;
             }
+            return findProductById(saved.getId());
         }
         return productRepository.save(product);
     }
