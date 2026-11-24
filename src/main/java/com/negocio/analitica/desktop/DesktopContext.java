@@ -14,6 +14,8 @@ public final class DesktopContext {
     private final PostgresUserAdministrationRepository userAdministration;
     private final AuthenticationService authentication;
     private final UserManagementService userManagement;
+    private final PostgresPermissionRepository permissionRepository;
+    private final PermissionManagementService permissionManagement;
     private CategoryController categories;
     private ProductController products;
     private ClienteController clients;
@@ -26,9 +28,12 @@ public final class DesktopContext {
         connections = PostgresConnectionProvider.fromEnvironment();
         userAdministration = new PostgresUserAdministrationRepository(connections);
         PasswordHasher hasher = new BCryptPasswordHasher();
+        permissionRepository = new PostgresPermissionRepository(connections);
         authentication = new AuthenticationService(new PostgresUsuarioRepository(connections),
-                new PostgresPermissionRepository(connections), hasher);
+                permissionRepository, hasher);
         userManagement = new UserManagementService(userAdministration, hasher);
+        permissionManagement = new PermissionManagementService(
+                new PostgresPermissionAdministrationRepository(connections));
     }
 
     public boolean needsOwnerSetup() { return !userAdministration.hasAnyUser(); }
@@ -72,6 +77,27 @@ public final class DesktopContext {
     public InventoryController inventory() { return require(inventory); }
     public AnaliticaController analytics() { return require(analytics); }
     public List<MetodoPago> getActivePaymentMethods() { return require(paymentMethods).findAllActive(); }
+
+    public List<com.negocio.analitica.model.Usuario> listUsers(AuthenticatedSession actor) {
+        return userManagement.listUsers(actor);
+    }
+    public void createEmployee(AuthenticatedSession actor, String username, String fullName, char[] password) {
+        userManagement.createEmployee(actor, username, fullName, password);
+    }
+    public void setUserActive(AuthenticatedSession actor, Long userId, boolean active) {
+        userManagement.setUserActive(actor, userId, active);
+    }
+    public boolean isEmployee(Long userId) { return userAdministration.isEmployee(userId); }
+    public java.util.Set<String> allPermissionCodes() { return permissionRepository.findAllPermissionCodes(); }
+    public java.util.Set<String> effectivePermissions(Long userId) {
+        return permissionRepository.findEffectivePermissionCodes(userId);
+    }
+    public void setPermission(AuthenticatedSession actor, Long userId, String code, boolean granted) {
+        permissionManagement.grantOrDeny(actor, userId, code, granted);
+    }
+    public void restorePermission(AuthenticatedSession actor, Long userId, String code) {
+        permissionManagement.restoreRoleDefault(actor, userId, code);
+    }
 
     private static <T> T require(T service) {
         if (service == null) throw new IllegalStateException("Inicia sesión antes de acceder a los módulos.");
