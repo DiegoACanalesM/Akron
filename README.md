@@ -15,6 +15,12 @@ Requisitos: Java 17, Maven 3.9 o superior y PostgreSQL instalado localmente.
 
 ```bash
 mvn clean verify
+mvn javafx:run
+```
+
+Para iniciar la versión de consola anterior, todavía disponible durante la transición:
+
+```bash
 mvn exec:java -Dexec.mainClass="com.negocio.analitica.Application"
 ```
 
@@ -84,4 +90,6 @@ Ejecuta `mvn clean verify` para compilar y ejecutar las pruebas automatizadas. J
 
 ## Alcance y estado
 
-La aplicación sigue siendo una interfaz de consola; no es todavía una aplicación web ni una API REST. La integración PostgreSQL ya está conectada en la rama, pero antes de considerarla lista para uso real debe probarse también en el PC local y verificarse el flujo completo con una base nueva. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
+La interfaz JavaFX de escritorio está en construcción en la rama `feature/javafx-desktop-ui`. Esta primera etapa incorpora inicio de sesión y configuración inicial del propietario, ventana principal, dashboard con indicadores reales, consulta de productos y categorías e identificación de productos con stock bajo. Las pantallas de inventario y reportes están en su primera versión de consulta; todavía faltan formularios de edición, movimientos desde la interfaz, ventas, gráficos y exportación.
+
+La lógica de negocio y la persistencia siguen separadas de la interfaz. La aplicación móvil no está incluida en esta entrega: una futura versión móvil deberá comunicarse con un servicio/API seguro en lugar de conectarse directamente a PostgreSQL. La interfaz JavaFX debe probarse en un equipo local con PostgreSQL antes de considerarse lista para uso real. Consulta [la guía de migración](docs/database/JAVA_POSTGRES_MIGRATION.md) para los detalles técnicos.
