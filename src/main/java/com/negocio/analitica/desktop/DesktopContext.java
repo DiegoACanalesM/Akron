@@ -5,6 +5,8 @@ import com.negocio.analitica.database.PostgresConnectionProvider;
 import com.negocio.analitica.repository.postgresql.*;
 import com.negocio.analitica.security.*;
 import com.negocio.analitica.service.*;
+import com.negocio.analitica.model.MetodoPago;
+import java.util.List;
 
 /** Builds shared application services and binds permission-sensitive services to a logged-in session. */
 public final class DesktopContext {
@@ -18,6 +20,7 @@ public final class DesktopContext {
     private VentaController sales;
     private InventoryController inventory;
     private AnaliticaController analytics;
+    private PostgresMetodoPagoRepository paymentMethods;
 
     public DesktopContext() {
         connections = PostgresConnectionProvider.fromEnvironment();
@@ -42,7 +45,8 @@ public final class DesktopContext {
         var categoryRepository = new PostgresCategoryRepository(connections);
         var productRepository = new PostgresProductRepository(connections);
         var clientRepository = new PostgresClienteRepository(connections);
-        var paymentRepository = new PostgresMetodoPagoRepository(connections);
+        paymentMethods = new PostgresMetodoPagoRepository(connections);
+        var paymentRepository = paymentMethods;
         var saleRepository = new PostgresVentaRepository(connections);
         var inventoryRepository = new PostgresInventoryRepository(connections);
 
@@ -67,6 +71,7 @@ public final class DesktopContext {
     public VentaController sales() { return require(sales); }
     public InventoryController inventory() { return require(inventory); }
     public AnaliticaController analytics() { return require(analytics); }
+    public List<MetodoPago> getActivePaymentMethods() { return require(paymentMethods).findAllActive(); }
 
     private static <T> T require(T service) {
         if (service == null) throw new IllegalStateException("Inicia sesión antes de acceder a los módulos.");
