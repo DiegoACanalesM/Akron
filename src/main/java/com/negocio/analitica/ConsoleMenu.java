@@ -97,6 +97,7 @@ public final class ConsoleMenu {
             System.out.println("18. Desactivar cliente");
             System.out.println("19. Editar categoría");
             System.out.println("20. Desactivar categoría");
+            System.out.println("21. Consultar detalle de venta");
             System.out.println("0. Cerrar sesión y salir");
             try {
                 int opcion = leerEntero("Seleccione una opción: ");
@@ -120,6 +121,7 @@ public final class ConsoleMenu {
                     case 18 -> { require("CUSTOMERS_MANAGE"); desactivarCliente(); }
                     case 19 -> { require("CATEGORIES_MANAGE"); editarCategoria(); }
                     case 20 -> { require("CATEGORIES_MANAGE"); desactivarCategoria(); }
+                    case 21 -> { require("SALES_VIEW"); consultarDetalleVenta(); }
                     case 0 -> { continuar = false; System.out.println("Sesión finalizada. Los datos permanecen guardados."); }
                     default -> System.out.println("Opción no válida.");
                 }
@@ -281,6 +283,31 @@ public final class ConsoleMenu {
         }
         Venta registrada = ventas.registrar(solicitud);
         System.out.printf("Venta #%d registrada. Total: $%.2f%n", registrada.getId(), registrada.getTotal());
+    }
+
+    private void consultarDetalleVenta() {
+        List<Venta> completed = ventas.listar().stream()
+                .filter(sale -> "COMPLETED".equals(sale.getStatus()))
+                .toList();
+        if (completed.isEmpty()) {
+            System.out.println("No hay ventas completadas para consultar.");
+            return;
+        }
+        completed.forEach(sale -> System.out.printf("#%d | %s | %s | $%.2f%n",
+                sale.getId(), sale.getFecha(),
+                sale.getClienteNombre() == null ? "Sin cliente" : sale.getClienteNombre(),
+                sale.getTotal()));
+        Venta sale = ventas.obtener(leerLong("ID de la venta: "));
+        System.out.printf("\\n--- DETALLE DE VENTA #%d ---\\n", sale.getId());
+        System.out.println("Fecha: " + sale.getFecha());
+        System.out.println("Cliente: " + (sale.getClienteNombre() == null ? "Sin cliente" : sale.getClienteNombre()));
+        System.out.println("Método de pago: " + sale.getMetodoPago());
+        System.out.println("Estado: " + sale.getStatus());
+        sale.getDetalles().forEach(detail -> System.out.printf(
+                "- %s | categoría: %s | cantidad: %d | unitario: $%.2f | subtotal: $%.2f%n",
+                detail.getProductoNombre(), detail.getCategoriaNombre(), detail.getCantidad(),
+                detail.getPrecioUnitario(), detail.getSubtotal()));
+        System.out.printf("TOTAL: $%.2f%n", sale.getTotal());
     }
 
     private void cancelarVenta() {
