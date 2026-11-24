@@ -6,6 +6,10 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import javafx.scene.layout.*;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -42,7 +46,9 @@ public final class ReportsView extends VBox {
         from.setMaxWidth(170); to.setMaxWidth(170);
         Button apply = new Button("Aplicar período"); apply.getStyleClass().add("primary-button");
         apply.setOnAction(event -> refresh());
-        HBox filters = new HBox(12, new Label("Desde"), from, new Label("Hasta"), to, apply);
+        Button export = new Button("Exportar CSV");
+        export.setOnAction(event -> exportCsv());
+        HBox filters = new HBox(12, new Label("Desde"), from, new Label("Hasta"), to, apply, export);
         filters.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
         GridPane metrics = new GridPane(); metrics.setHgap(12); metrics.setVgap(12);
@@ -152,6 +158,53 @@ public final class ReportsView extends VBox {
         } catch (RuntimeException error) {
             showError(error.getMessage() == null ? "No se pudieron generar los reportes." : error.getMessage());
         }
+    }
+
+    private void exportCsv() {
+        LocalDate start = from.getValue();
+        LocalDate end = to.getValue();
+        if (start == null || end == null || end.isBefore(start)) {
+            showError("Selecciona un período válido antes de exportar.");
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Exportar reporte de ventas");
+        chooser.setInitialFileName("akron-reporte-" + start + "-a-" + end + ".csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivo CSV", "*.csv"));
+        File file = chooser.showSaveDialog(getScene() == null ? null : getScene().getWindow());
+        if (file == null) return;
+        try {
+            StringBuilder csv = new StringBuilder();
+            csv.append("AKRON - Reporte de ventas\\n");
+            csv.append("Desde;").append(start).append(";Hasta;").append(end).append("\\n");
+            csv.append("Venta;Fecha;Cliente ID;Estado;Producto;Cantidad;Precio unitario;Subtotal\\n");
+            for (Venta sale : context.analytics().ventasEntre(start, end)) {
+                for (var detail : sale.getDetalles()) {
+                    csv.append(csvCell(sale.getId())).append(';')
+                            .append(csvCell(sale.getFecha())).append(';')
+                            .append(csvCell(sale.getClienteId())).append(';')
+                            .append(csvCell(sale.getStatus())).append(';')
+                            .append(csvCell(detail.getProductoNombre())).append(';')
+                            .append(detail.getCantidad()).append(';')
+                            .append(String.format(Locale.ROOT, "%.2f", detail.getPrecioUnitario())).append(';')
+                            .append(String.format(Locale.ROOT, "%.2f", detail.getSubtotal())).append('\\n');
+                }
+            }
+            Files.writeString(file.toPath(), "\\uFEFF" + csv, StandardCharsets.UTF_8);
+            Alert success = new Alert(Alert.AlertType.INFORMATION);
+            success.setTitle("Exportación completada");
+            success.setHeaderText("Reporte exportado");
+            success.setContentText("El archivo CSV se guardó correctamente en:\\n" + file.getAbsolutePath());
+            success.showAndWait();
+        } catch (Exception error) {
+            showError(error.getMessage() == null ? "No se pudo exportar el reporte." : error.getMessage());
+        }
+    }
+
+    private String csvCell(Object value) {
+        if (value == null) return "";
+        String text = String.valueOf(value);
+        return "\"" + text.replace("\\"", "\"\"") + "\"";
     }
 
     private void setChartData(BarChart<String, Number> chart, Map<String, Double> values) {
