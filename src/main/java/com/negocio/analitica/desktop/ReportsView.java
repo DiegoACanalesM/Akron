@@ -187,7 +187,7 @@ public final class ReportsView extends VBox {
                             .append(csvCell(detail.getProductoNombre())).append(';')
                             .append(detail.getCantidad()).append(';')
                             .append(String.format(Locale.ROOT, "%.2f", detail.getPrecioUnitario())).append(';')
-                            .append(String.format(Locale.ROOT, "%.2f", detail.getSubtotal())).append('\\n');
+                            .append(String.format(Locale.ROOT, "%.2f", detail.getSubtotal())).append('\n');
                 }
             }
             Files.writeString(file.toPath(), "\\uFEFF" + csv, StandardCharsets.UTF_8);
@@ -204,7 +204,7 @@ public final class ReportsView extends VBox {
     private String csvCell(Object value) {
         if (value == null) return "";
         String text = String.valueOf(value);
-        return "\"" + text.replace("\\"", "\"\"") + "\"";
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 
     private void setChartData(BarChart<String, Number> chart, Map<String, Double> values) {
