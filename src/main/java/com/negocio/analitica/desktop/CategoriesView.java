@@ -1,6 +1,7 @@
 package com.negocio.analitica.desktop;
 
 import com.negocio.analitica.model.Category;
+import com.negocio.analitica.security.AuthenticatedSession;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -13,11 +14,13 @@ import java.util.function.Function;
 /** Category catalogue with create, edit, search and soft-deactivation actions. */
 public final class CategoriesView extends VBox {
     private final DesktopContext context;
+    private final AuthenticatedSession session;
     private final TableView<Category> table = new TableView<>();
     private final TextField search = new TextField();
 
-    public CategoriesView(DesktopContext context) {
+    public CategoriesView(DesktopContext context, AuthenticatedSession session) {
         this.context = context;
+        this.session = session;
         setSpacing(18);
         setPadding(new Insets(34));
 
@@ -26,6 +29,7 @@ public final class CategoriesView extends VBox {
         Label subtitle = new Label("Organiza los productos mediante categorías.");
         subtitle.getStyleClass().add("page-subtitle");
         Button add = new Button("Agregar categoría");
+        add.setDisable(!session.hasPermission("CATEGORIES_MANAGE"));
         add.getStyleClass().add("primary-button");
         add.setOnAction(event -> openCategoryDialog(null));
         HBox heading = new HBox(16, title, new Region(), add);
@@ -73,6 +77,8 @@ public final class CategoriesView extends VBox {
             private final Button deactivate = new Button("Desactivar");
             private final HBox actions = new HBox(8, edit, deactivate);
             {
+                edit.setDisable(!session.hasPermission("CATEGORIES_MANAGE"));
+                deactivate.setDisable(!session.hasPermission("CATEGORIES_MANAGE"));
                 edit.setOnAction(event -> openCategoryDialog(getItem()));
                 deactivate.setOnAction(event -> deactivate(getItem()));
             }
@@ -86,6 +92,7 @@ public final class CategoriesView extends VBox {
     }
 
     private void openCategoryDialog(Category selected) {
+        session.requirePermission("CATEGORIES_MANAGE");
         boolean editing = selected != null;
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(editing ? "Editar categoría" : "Nueva categoría");
@@ -124,6 +131,7 @@ public final class CategoriesView extends VBox {
     }
 
     private void deactivate(Category category) {
+        session.requirePermission("CATEGORIES_MANAGE");
         if (category == null || !category.isActive()) return;
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Desactivar categoría");
