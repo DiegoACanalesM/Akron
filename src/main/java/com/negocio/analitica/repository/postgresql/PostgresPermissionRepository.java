@@ -51,4 +51,18 @@ public final class PostgresPermissionRepository implements PermissionRepository 
             throw new IllegalStateException("No se pudieron consultar los permisos del usuario.", error);
         }
     }
+
+    @Override
+    public Set<String> findAllPermissionCodes() {
+        Set<String> codes = new LinkedHashSet<>();
+        try (Connection connection = connections.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT code FROM permissions ORDER BY code");
+             ResultSet result = statement.executeQuery()) {
+            while (result.next()) codes.add(result.getString("code"));
+            return Set.copyOf(codes);
+        } catch (SQLException error) {
+            throw new IllegalStateException("No se pudieron consultar los permisos disponibles.", error);
+        }
+    }
 }
