@@ -24,7 +24,7 @@ En el primer inicio, AKRON solicita crear la cuenta inicial OWNER. En los siguie
 
 La rama `dev1-postgresql-integration` conecta autenticación, usuarios, permisos y todos los módulos comerciales a PostgreSQL. Categorías, productos, clientes, métodos de pago, ventas, detalles e inventario comparten la misma base local.
 
-La creación y cancelación de ventas actualizan existencias y registran movimientos de inventario en transacciones atómicas. Las entradas, salidas y ajustes manuales también guardan el historial junto con la actualización del stock. Los cambios de existencias no deben hacerse directamente desde una edición de producto.
+La creación y cancelación de ventas actualizan existencias y registran movimientos de inventario en transacciones atómicas. Las entradas, salidas y ajustes manuales también guardan el historial junto con la actualización del stock. Los cambios de existencias no deben hacerse directamente desde una edición de producto. Los productos activos de categorías desactivadas no pueden venderse, pero sus existencias siguen disponibles para consulta y gestión de inventario.
 
 No se migran registros antiguos de SQLite: se utiliza una base PostgreSQL nueva. Los adaptadores SQLite siguen en el repositorio por compatibilidad y pruebas existentes, pero ya no se conectan desde `Application`.
 
@@ -38,12 +38,14 @@ Solo se permite una instancia de AKRON abierta por instalación. Para cambiar de
 2. Registrar productos asociados a categorías.
 3. Registrar clientes.
 4. Registrar ventas con uno o varios productos y métodos de pago del catálogo.
-5. Consultar categorías, productos, clientes y ventas.
-6. Consultar ingresos, transacciones, unidades, ticket promedio, producto más vendido y alertas de stock bajo.
-7. Importar clientes desde un archivo CSV.
-8. Registrar entradas y salidas de inventario.
-9. Administrar usuarios y permisos.
-10. Cancelar ventas completadas, restaurando existencias y dejando trazabilidad.
+5. Consultar categorías, productos, clientes y ventas, incluyendo el detalle de cada venta.
+6. Editar y desactivar categorías, productos y clientes sin borrar su historial comercial.
+7. Consultar ingresos, transacciones, unidades, ticket promedio, producto más vendido, ventas por categoría y método de pago, y alertas de stock bajo.
+8. Comparar los resultados de ventas entre períodos equivalentes.
+9. Importar clientes desde un archivo CSV.
+10. Registrar entradas, salidas, ajustes y consultar el historial de inventario.
+11. Administrar usuarios y permisos.
+12. Cancelar ventas completadas, restaurando existencias y dejando trazabilidad.
 
 ## Formato CSV de clientes
 
