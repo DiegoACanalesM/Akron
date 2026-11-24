@@ -227,7 +227,7 @@ public final class ConsoleMenu {
             System.out.println("No hay productos con stock bajo.");
             return;
         }
-        System.out.println("\\n--- PRODUCTOS CON STOCK BAJO ---");
+        System.out.println("\n--- PRODUCTOS CON STOCK BAJO ---");
         lowStock.forEach(product -> System.out.printf(
                 "%d | %s | stock: %d | mínimo: %d%n",
                 product.getId(), product.getName(),
@@ -274,7 +274,7 @@ public final class ConsoleMenu {
                 System.out.println("No hay métodos de pago activos configurados.");
                 return;
             }
-            System.out.println("\\nMétodos de pago:");
+            System.out.println("\nMétodos de pago:");
             methods.forEach(method -> System.out.printf("%d - %s%n", method.getId(), method.getName()));
             long paymentMethodId = leerLong("ID del método de pago: ");
             solicitud = new Venta(null, null, clienteId, null, paymentMethodId, "DRAFT", detalles);
