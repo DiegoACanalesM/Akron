@@ -114,7 +114,7 @@ public final class CategoriesView extends VBox {
         try {
             if (name.getText().isBlank()) throw new IllegalArgumentException("El nombre es obligatorio.");
             Category category = new Category(editing ? selected.getId() : null,
-                    name.getText().trim(), description.getText().trim(), true);
+                    name.getText().trim(), description.getText().trim(), editing && selected.isActive());
             if (editing) context.categories().updateCategory(category);
             else context.categories().createCategory(category);
             refresh(search.getText());
