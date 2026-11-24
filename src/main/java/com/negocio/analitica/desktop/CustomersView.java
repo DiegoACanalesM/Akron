@@ -1,6 +1,7 @@
 package com.negocio.analitica.desktop;
 
 import com.negocio.analitica.model.Cliente;
+import com.negocio.analitica.security.AuthenticatedSession;
 import javafx.collections.FXCollections;
 import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
@@ -11,6 +12,7 @@ import javafx.beans.property.SimpleStringProperty;
 /** Customer directory with create, edit, search and soft-deactivation actions. */
 public final class CustomersView extends VBox {
     private final DesktopContext context;
+    private final AuthenticatedSession session;
     private final TableView<Cliente> table = new TableView<>();
     private final TextField name = new TextField();
     private final TextField document = new TextField();
@@ -20,8 +22,9 @@ public final class CustomersView extends VBox {
     private final Label feedback = new Label();
     private FilteredList<Cliente> filtered;
 
-    public CustomersView(DesktopContext context) {
+    public CustomersView(DesktopContext context, AuthenticatedSession session) {
         this.context = context;
+        this.session = session;
         setSpacing(16);
         setPadding(new Insets(30));
         getStyleClass().add("page-content");
@@ -60,11 +63,13 @@ public final class CustomersView extends VBox {
         for (int i = 1; i < 4; i++) GridPane.setHgrow(form.getChildren().get(i), Priority.ALWAYS);
 
         Button save = new Button("Guardar cliente");
+        save.setDisable(!session.hasPermission("CUSTOMERS_MANAGE"));
         save.getStyleClass().add("primary-button");
         save.setOnAction(event -> save());
         Button clear = new Button("Limpiar");
         clear.setOnAction(event -> clearForm());
         Button deactivate = new Button("Desactivar");
+        deactivate.setDisable(!session.hasPermission("CUSTOMERS_MANAGE"));
         deactivate.setOnAction(event -> deactivate());
         HBox actions = new HBox(10, save, clear, deactivate);
         feedback.getStyleClass().add("feedback");
@@ -111,6 +116,7 @@ public final class CustomersView extends VBox {
 
     private void save() {
         try {
+            session.requirePermission("CUSTOMERS_MANAGE");
             if (name.getText().isBlank()) {
                 feedback.setText("El nombre del cliente es obligatorio.");
                 return;
@@ -131,6 +137,7 @@ public final class CustomersView extends VBox {
     }
 
     private void deactivate() {
+        session.requirePermission("CUSTOMERS_MANAGE");
         Cliente selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             feedback.setText("Selecciona un cliente de la tabla.");
