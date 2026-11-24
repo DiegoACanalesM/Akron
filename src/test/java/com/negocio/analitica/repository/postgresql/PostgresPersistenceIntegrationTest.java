@@ -134,6 +134,26 @@ class PostgresPersistenceIntegrationTest {
     }
 
     @Test
+    void inactiveCategoryBlocksSalesButKeepsInventoryManageable() throws SQLException {
+        try (Connection connection = connections.getConnection()) {
+            execute(connection, "UPDATE categories SET is_active = FALSE WHERE id = ?", categoryId);
+        }
+
+        PostgresInventoryRepository inventory = new PostgresInventoryRepository(connections);
+        inventory.registerEntry(productId, userId, 2, "Inventory after category deactivation");
+        inventory.registerExit(productId, userId, 1, "Inventory correction");
+        inventory.adjustStock(productId, userId, 8, "Physical count");
+
+        assertEquals(8, readStock());
+        assertEquals(3, inventory.findByProductId(productId).size());
+
+        PostgresVentaRepository sales = new PostgresVentaRepository(connections);
+        assertThrows(IllegalArgumentException.class, () -> sales.save(newSale(1, null)));
+        assertEquals(8, readStock());
+        assertEquals(0, count("SELECT COUNT(*) FROM sales WHERE user_id = ?", userId));
+    }
+
+    @Test
     void inactiveCustomerCannotBeUsedForANewSale() throws SQLException {
         try (Connection connection = connections.getConnection()) {
             execute(connection, "UPDATE customers SET is_active = FALSE WHERE id = ?", customerId);
