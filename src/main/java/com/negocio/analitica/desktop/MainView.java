@@ -71,11 +71,11 @@ public final class MainView extends BorderPane {
                 case "Dashboard" -> content.getChildren().add(new DashboardView(context, session));
                 case "Products" -> {
                     session.requirePermission("PRODUCTS_VIEW");
-                    content.getChildren().add(new ProductsView(context));
+                    content.getChildren().add(new ProductsView(context, session));
                 }
                 case "Categories" -> {
                     session.requirePermission("CATEGORIES_VIEW");
-                    content.getChildren().add(new CategoriesView(context));
+                    content.getChildren().add(new CategoriesView(context, session));
                 }
                 case "Sales" -> {
                     session.requirePermission("SALES_VIEW");
