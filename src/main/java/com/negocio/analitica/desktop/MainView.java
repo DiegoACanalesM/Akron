@@ -35,9 +35,11 @@ public final class MainView extends BorderPane {
         logo.getStyleClass().add("sidebar-logo");
         Label subtitle = new Label("Sales & Inventory");
         subtitle.getStyleClass().add("sidebar-subtitle");
-        navigation.getChildren().addAll(
-                navButton("Dashboard"), navButton("Products"), navButton("Categories"), navButton("Sales"),
-                navButton("Inventory"));
+        navigation.getChildren().add(navButton("Dashboard"));
+        if (session.hasPermission("PRODUCTS_VIEW")) navigation.getChildren().add(navButton("Products"));
+        if (session.hasPermission("CATEGORIES_VIEW")) navigation.getChildren().add(navButton("Categories"));
+        if (session.hasPermission("SALES_VIEW")) navigation.getChildren().add(navButton("Sales"));
+        if (session.hasPermission("INVENTORY_VIEW")) navigation.getChildren().add(navButton("Inventory"));
         if (session.hasPermission("ANALYTICS_VIEW")) navigation.getChildren().add(navButton("Reports"));
         if (session.hasPermission("CUSTOMERS_VIEW")) navigation.getChildren().add(navButton("Customers"));
         if (session.hasPermission("USERS_MANAGE")) navigation.getChildren().add(navButton("Users"));
@@ -67,10 +69,22 @@ public final class MainView extends BorderPane {
         try {
             switch (name) {
                 case "Dashboard" -> content.getChildren().add(new DashboardView(context, session));
-                case "Products" -> content.getChildren().add(new ProductsView(context));
-                case "Categories" -> content.getChildren().add(new CategoriesView(context));
-                case "Sales" -> content.getChildren().add(new SalesView(context));
-                case "Inventory" -> content.getChildren().add(new InventoryView(context));
+                case "Products" -> {
+                    session.requirePermission("PRODUCTS_VIEW");
+                    content.getChildren().add(new ProductsView(context));
+                }
+                case "Categories" -> {
+                    session.requirePermission("CATEGORIES_VIEW");
+                    content.getChildren().add(new CategoriesView(context));
+                }
+                case "Sales" -> {
+                    session.requirePermission("SALES_VIEW");
+                    content.getChildren().add(new SalesView(context));
+                }
+                case "Inventory" -> {
+                    session.requirePermission("INVENTORY_VIEW");
+                    content.getChildren().add(new InventoryView(context));
+                }
                 case "Reports" -> {
                     session.requirePermission("ANALYTICS_VIEW");
                     content.getChildren().add(new ReportsView(context));
