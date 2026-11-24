@@ -85,7 +85,7 @@ public final class CategoriesView extends VBox {
             @Override protected void updateItem(Category category, boolean empty) {
                 super.updateItem(category, empty);
                 setGraphic(empty || category == null ? null : actions);
-                deactivate.setDisable(category != null && !category.isActive());
+                deactivate.setDisable(!session.hasPermission("CATEGORIES_MANAGE") || category == null || !category.isActive());
             }
         });
         return column;
