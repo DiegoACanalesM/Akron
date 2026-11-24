@@ -37,7 +37,8 @@ public final class MainView extends BorderPane {
         subtitle.getStyleClass().add("sidebar-subtitle");
         navigation.getChildren().addAll(
                 navButton("Dashboard"), navButton("Products"), navButton("Categories"), navButton("Sales"),
-                navButton("Inventory"), navButton("Reports"));
+                navButton("Inventory"));
+        if (session.hasPermission("ANALYTICS_VIEW")) navigation.getChildren().add(navButton("Reports"));
         if (session.hasPermission("CUSTOMERS_VIEW")) navigation.getChildren().add(navButton("Customers"));
         if (session.hasPermission("USERS_MANAGE")) navigation.getChildren().add(navButton("Users"));
         Region spacer = new Region();
@@ -70,10 +71,13 @@ public final class MainView extends BorderPane {
                 case "Categories" -> content.getChildren().add(new CategoriesView(context));
                 case "Sales" -> content.getChildren().add(new SalesView(context));
                 case "Inventory" -> content.getChildren().add(new InventoryView(context));
-                case "Reports" -> content.getChildren().add(new ReportsView(context));
+                case "Reports" -> {
+                    session.requirePermission("ANALYTICS_VIEW");
+                    content.getChildren().add(new ReportsView(context));
+                }
                 case "Customers" -> {
                     session.requirePermission("CUSTOMERS_VIEW");
-                    content.getChildren().add(new CustomersView(context));
+                    content.getChildren().add(new CustomersView(context, session));
                 }
                 case "Users" -> {
                     session.requirePermission("USERS_MANAGE");
