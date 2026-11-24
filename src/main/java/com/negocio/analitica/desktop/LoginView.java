@@ -15,7 +15,7 @@ public final class LoginView extends BorderPane {
     private final TextField fullName = new TextField();
     private final PasswordField password = new PasswordField();
     private final PasswordField confirmation = new PasswordField();
-    private final Label feedback = new Label();
+    private Label feedback = new Label();
 
     public LoginView(DesktopContext context, Consumer<AuthenticatedSession> onAuthenticated) {
         this.context = context;
@@ -103,6 +103,8 @@ public final class LoginView extends BorderPane {
                 context.createOwner(user, fullName.getText(), password.getText().toCharArray());
                 password.clear();
                 confirmation.clear();
+                feedback = new Label();
+                feedback.getStyleClass().add("feedback");
                 setCenter(buildForm());
                 return;
             }
