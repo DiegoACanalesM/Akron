@@ -63,7 +63,7 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL
 SECURITY DEFINER
 SET search_path = pg_catalog, audit
-AS $
+AS $audit$
 DECLARE
     v_old JSONB;
     v_new JSONB;
@@ -93,7 +93,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$;
+$audit$;
 
 -- This trigger checks that the movement's final stock matches the product row.
 -- Java already updates product stock and inserts the movement in the same transaction.
