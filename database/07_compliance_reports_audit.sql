@@ -61,7 +61,9 @@ COMMENT ON TABLE audit.audit_log IS
 CREATE OR REPLACE FUNCTION audit.fn_audit_row_change()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
-AS $$
+SECURITY DEFINER
+SET search_path = pg_catalog, audit
+AS $
 DECLARE
     v_old JSONB;
     v_new JSONB;
@@ -83,7 +85,7 @@ BEGIN
     )
     VALUES (
         TG_TABLE_SCHEMA, TG_TABLE_NAME, v_record_id, TG_OP,
-        v_old, v_new, CURRENT_USER, current_setting('application_name', TRUE)
+        v_old, v_new, SESSION_USER, current_setting('application_name', TRUE)
     );
 
     IF TG_OP = 'DELETE' THEN
