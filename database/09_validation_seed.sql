@@ -69,7 +69,7 @@ SELECT
     'DEMO-VALIDATION-PRODUCT-' || lpad(g::text, 3, '0'),
     'Producto ficticio para validar el proyecto académico',
     (10000 + g * 125)::NUMERIC(12, 2),
-    99,
+    100,
     5,
     c.id,
     TRUE
@@ -108,8 +108,30 @@ JOIN app.categories c ON c.id = p.category_id
 WHERE cu.document LIKE 'DEMO-UPC-%'
   AND NOT EXISTS (SELECT 1 FROM app.sale_details d WHERE d.sale_id = s.id);
 
--- The products were seeded with stock 99. Each corresponding sale movement
--- documents a fictional decrease from 100 to 99, matching the current stock.
+-- Record the opening balance first: each demo product starts at 100 units.
+INSERT INTO app.inventory_movements(
+    product_id, user_id, sale_detail_id, movement_type,
+    quantity, stock_before, stock_after, note
+)
+SELECT
+    p.id,
+    (SELECT id FROM app.users WHERE is_active = TRUE ORDER BY id LIMIT 1),
+    NULL,
+    'ENTRY',
+    100,
+    0,
+    100,
+    'Saldo inicial ficticio de validación académica'
+FROM app.products p
+WHERE p.name LIKE 'DEMO-VALIDATION-PRODUCT-%';
+
+-- Apply the corresponding fictional sale to the current stock.
+UPDATE app.products p
+   SET stock = 99
+  FROM app.sale_details d
+ WHERE d.product_id = p.id;
+
+-- Each sale movement now documents the decrease from 100 to 99.
 INSERT INTO app.inventory_movements(
     product_id, user_id, sale_detail_id, movement_type,
     quantity, stock_before, stock_after, note
