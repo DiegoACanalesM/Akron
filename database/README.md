@@ -32,3 +32,14 @@ El primer script requiere privilegio CREATEDB. No se ejecuta conectado a akron_d
 - El primer usuario OWNER debe crearse mediante un flujo de configuración inicial seguro.
 - Probar en desarrollo antes de usar datos reales.
 - Preparar respaldos periódicos y probar la restauración.
+
+
+## Preparación para el verificador académico
+
+Los scripts `06_compliance_schemas.sql` a `09_validation_seed.sql` son
+opcionales y están separados de la instalación normal para no cambiar el flujo
+actual de la aplicación sin revisión.
+
+Consulta [COMPLIANCE_README.md](COMPLIANCE_README.md) antes de utilizarlos.
+La migración de esquemas requiere respaldo previo. La semilla contiene datos
+ficticios y solo debe ejecutarse en una base desechable de evaluación.
