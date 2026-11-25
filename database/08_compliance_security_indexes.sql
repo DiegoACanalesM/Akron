@@ -21,7 +21,10 @@ BEGIN
 END
 $;
 
--- Normalize attributes even if the login role existed before this migration.
+-- Normalize role attributes even if these roles existed before this migration.
+ALTER ROLE akron_readonly NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+ALTER ROLE akron_operator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+ALTER ROLE akron_admin NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
 ALTER ROLE akron_app WITH LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
 
 GRANT CONNECT ON DATABASE akron_db TO akron_app;
