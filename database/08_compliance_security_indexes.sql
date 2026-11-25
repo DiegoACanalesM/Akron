@@ -4,7 +4,7 @@
 \set ON_ERROR_STOP on
 
 -- Roles are cluster-level objects; create them only when absent.
-DO $$
+DO $roles$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'akron_readonly') THEN
         CREATE ROLE akron_readonly NOLOGIN;
@@ -19,7 +19,7 @@ BEGIN
         CREATE ROLE akron_app LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
     END IF;
 END
-$;
+$roles$;
 
 -- Normalize role attributes even if these roles existed before this migration.
 ALTER ROLE akron_readonly NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
