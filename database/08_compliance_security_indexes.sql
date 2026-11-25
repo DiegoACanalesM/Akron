@@ -19,7 +19,10 @@ BEGIN
         CREATE ROLE akron_app LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
     END IF;
 END
-$$;
+$;
+
+-- Normalize attributes even if the login role existed before this migration.
+ALTER ROLE akron_app WITH LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
 
 GRANT CONNECT ON DATABASE akron_db TO akron_app;
 
