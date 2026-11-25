@@ -127,7 +127,11 @@ WHERE p.name LIKE 'DEMO-VALIDATION-PRODUCT-%';
 UPDATE app.products p
    SET stock = 99
   FROM app.sale_details d
- WHERE d.product_id = p.id;
+  JOIN app.sales s ON s.id = d.sale_id
+  JOIN app.customers cu ON cu.id = s.customer_id
+ WHERE d.product_id = p.id
+   AND p.name LIKE 'DEMO-VALIDATION-PRODUCT-%'
+   AND cu.document LIKE 'DEMO-UPC-%';
 
 -- Each sale movement now documents the decrease from 100 to 99.
 INSERT INTO app.inventory_movements(
