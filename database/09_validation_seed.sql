@@ -28,14 +28,14 @@ INSERT INTO app.user_roles(user_id, role_id)
 SELECT u.id, r.id
 FROM (SELECT id FROM app.users WHERE is_active = TRUE ORDER BY id LIMIT 1) u
 CROSS JOIN app.roles r
-WHERE r.name = 'EMPLOYEE'
+WHERE r.name = 'OWNER'
   AND NOT EXISTS (
       SELECT 1 FROM app.user_roles ur
       WHERE ur.user_id = u.id AND ur.role_id = r.id
   );
 
 INSERT INTO app.user_permissions(user_id, permission_id, granted)
-SELECT u.id, p.id, FALSE
+SELECT u.id, p.id, TRUE
 FROM (SELECT id FROM app.users WHERE is_active = TRUE ORDER BY id LIMIT 1) u
 CROSS JOIN app.permissions p
 WHERE p.code = 'ANALYTICS_VIEW'
